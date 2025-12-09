@@ -8,6 +8,7 @@ export default function Home() {
     const [preview, setPreview] = useState(null);
     const [results, setResults] = useState(null);
     const [isPredicting, setIsPredicting] = useState(false);
+    const [isGettingClasses, setIsGettingClasses] = useState(false);
     const [showClasses, setShowClasses] = useState(false);
     const [classes, setClasses] = useState(null);
     
@@ -31,15 +32,27 @@ export default function Home() {
     }
 
     async function displayClasses(){
+        setIsGettingClasses(true);
         const res = await fetch("http://localhost:8000/getclassnames", {
             method: "GET",
         });
         setClasses(await res.json());
         setShowClasses(true);
+        setIsGettingClasses(false);
     }
 
-    async function saveClasses(){
-        // const res 
+    async function saveClasses(classes){
+        const text = classes
+        const res = await fetch("http://localhost:8000/saveclassnames", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({text})
+        })
+        setShowClasses(false);
+        setClasses(classes);
+        console.log(classes);
     }
 
     
@@ -56,8 +69,13 @@ export default function Home() {
             >
             </img>} 
 
-            <button onClick={displayClasses}>Review and Edit Class Names</button>
-            
+            <div>
+                <button onClick={displayClasses}>Review and Edit Class Names</button>
+                {isGettingClasses && 
+                    <LoadingSpinner />
+                }
+            </div>
+
             <button onClick={handlePredict} className="w-100">Predict</button>
             {isPredicting && 
                 <LoadingSpinner />
@@ -68,7 +86,7 @@ export default function Home() {
             
             {showClasses && 
                 <div className="absolute bg-black/75 h-full w-full top-0 flex">
-                    <ClassTextArea className="w-1/2 h-8/10 m-auto" classes={classes} onCancel={() => setShowClasses(false)} onSubmit={()=>{}}></ClassTextArea>
+                    <ClassTextArea className="w-1/2 h-8/10 m-auto" classes={classes} onCancel={() => setShowClasses(false)} onSubmit={saveClasses}></ClassTextArea>
                 </div>
             }
         </div>

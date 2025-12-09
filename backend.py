@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Body
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,8 +17,9 @@ import io
 base_path = os.path.dirname(__file__)
 
 app = FastAPI()
-static_path = "frontend/dist/assets"
-build_path = os.path.join(base_path, static_path)
+
+build_path = os.path.join(base_path, "frontend/dist/assets")
+
 app.mount("/assets", StaticFiles(directory=build_path), name='assets')
 app.add_middleware(
     CORSMiddleware,
@@ -42,15 +43,18 @@ checkpoint = torch.load(os.path.join(base_path, "Aircraft.pth"))
 model.load_state_dict(checkpoint["state_dict"], strict=False)
 model.eval()
 
-with open(os.path.join(base_path, "imagenet_classes.txt")) as f:
+classname_path = os.path.join(base_path, "imagenet_classes.txt") 
+
+with open(classname_path) as f:
     lines = f.readlines()
 
 class_names = [line.strip() for line in lines]
-prompts = [f"a photo of a {name}" for name in class_names]
+
+
 
 @app.get("/")
 def default():
-    return FileResponse(os.path.join(os.path.dirname(__file__), "frontend/dist/index.html"))
+    return FileResponse(os.path.join(base_path, "frontend/dist/index.html"))
 
 @app.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
@@ -59,11 +63,15 @@ async def upload_image(file: UploadFile = File(...)):
     content = await file.read()
     uploaded_image = Image.open(io.BytesIO(content))
 
-    return {"filename": file.filename, "size": len(content)}
+    return {"status": "ok"}
 
 @app.get("/predict")
 def predict():
-    global uploaded_image
+    global uploaded_image, class_names
+
+    print(class_names[-1])
+
+    prompts = [f"a photo of a {name}" for name in class_names]
 
     if uploaded_image is None:
         return {"error": "No image uploaded yet"}
@@ -91,4 +99,22 @@ def predict():
 
 @app.get("/getclassnames")
 def getClassNames():
+    global class_names
+    with open(classname_path) as f:
+        lines = f.readlines()
+    
+    class_names = [line.strip() for line in lines]
+
     return class_names
+
+@app.post("/saveclassnames")
+async def saveClassNames(data: dict = Body(...)):
+    global class_names
+    classes = data["text"]
+    text = "\n".join(classes)
+    with open(classname_path, "w") as file:
+        file.write(text)
+        
+    class_names = [line.strip() for line in classes]
+
+    return {"status": "ok"}
