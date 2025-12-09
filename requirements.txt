@@ -3,4 +3,8 @@ ftfy
 regex
 wilds
 pandas
+uvicorn
+fastapi
+clip
+python-multipart
 git+https://github.com/modestyachts/ImageNetV2_pytorch
