@@ -2,29 +2,12 @@ import React, { useCallback } from "react";
 import { useState } from "react";
 
 
-export function UploadImage({className, setPreview, changeImage}) {
+export function UploadImage({className, changeImage, handleUpload}) {
     // const [preview, setPreview] = useState(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isUploaded, setIsUploaded] = useState(false);
 
-    const handleUpload = useCallback(async (files) =>
-    {
-        if (!files || files.length === 0) return; 
-        const file = files[0];
-        
-        setPreview(URL.createObjectURL(file));
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const res = await fetch("http://localhost:8000/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        const data = await res.json();
-
-    }, [setPreview] );
+    
 
     const handleSelectImage = (e) => {
         const files = e.target.files;

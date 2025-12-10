@@ -50,7 +50,8 @@ with open(classname_path) as f:
 
 class_names = [line.strip() for line in lines]
 
-
+prompt_pre = "a photo of a"
+prompt_suf = ""
 
 @app.get("/")
 def default():
@@ -67,11 +68,12 @@ async def upload_image(file: UploadFile = File(...)):
 
 @app.get("/predict")
 def predict():
-    global uploaded_image, class_names
+    global uploaded_image, class_names, prompt_pre, prompt_suf
 
-    print(class_names[-1])
+    if prompt_pre.endswith(" "):
+        prompt_pre = prompt_pre[:-1]
 
-    prompts = [f"a photo of a {name}" for name in class_names]
+    prompts = [f"{prompt_pre} {name} {prompt_suf}".strip() for name in class_names]
 
     if uploaded_image is None:
         return {"error": "No image uploaded yet"}
@@ -106,6 +108,22 @@ def getClassNames():
     class_names = [line.strip() for line in lines]
 
     return class_names
+
+@app.get("/getprompt")
+def getPrompt():
+    global prompt_pre, prompt_suf
+    
+    return {"prefix": prompt_pre, "suffix": prompt_suf}
+
+@app.post("/saveprompt")
+def savePrompt(data: dict = Body(...)):
+    global prompt_pre, prompt_suf
+
+    prompt_pre = data["prefix"]
+    prompt_suf = data["suffix"]
+
+    return {"status": "ok"}
+
 
 @app.post("/saveclassnames")
 async def saveClassNames(data: dict = Body(...)):
