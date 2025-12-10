@@ -23,7 +23,7 @@ export function ClassTextArea({className, classes, onCancel, onSubmit, prompt}) 
             <div className={`${className} flex justify-center mb-2`}>
                 <textarea 
                 ref={textAreaRef}
-                className="w-full h-full resize-none bg-black/30 rounded-md border-1" 
+                className="w-full h-full resize-none bg-white/5  rounded-md border-1" 
                 placeholder="Write text here" 
                 defaultValue={classes.join("\n")}
                 onChange={(e) => setTextClasses(e.target.value.split("\n"))}

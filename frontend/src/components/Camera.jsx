@@ -58,7 +58,7 @@ export function Camera({setPreview, handleUpload}) {
                     <img className="absolute w-2/10 h-2/10 bottom-2 right-2 border-2" src={capturedImage}></img>
                 }
             </div>
-            <button className="w-full" onClick={handleCapture}>Capture</button>
+            <button className="w-full btn" onClick={handleCapture}>Capture</button>
         </div>
     );
 }
