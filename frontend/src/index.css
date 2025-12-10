@@ -13,6 +13,15 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  --color-jetblack: #002229;
+  --color-grey: #757780;
+  --color-magenta: #44001A;
+  --color-honeydew: #ECFFF8;
+  --color-onyx: #01110A;
+
+  --color-grey-dark: #27282A;
+
 }
 
 html, body, #root{
@@ -23,14 +32,14 @@ html, body, #root{
   max-width: none;
 }
 
-a {
+/* a {
   font-weight: 500;
   color: #646cff;
   text-decoration: inherit;
 }
 a:hover {
   color: #535bf2;
-}
+} */
 
 body {
   margin: 0;
@@ -44,8 +53,14 @@ h1 {
   font-size: 3.2em;
   line-height: 1.1;
 }
+@layer components {
+  .btn {
+    @apply p-3 bg-white/10 rounded-md border-1 border-[var(--color-onyx)] 
+    hover:bg-[var(--color-magenta)]/20 transition duration-300;
+  }
+}
 
-button {
+/* button {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
@@ -58,13 +73,13 @@ button {
 }
 button:hover {
   border-color: #646cff;
-}
-button:focus,
+} */
+/* button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
-}
+} */
 
-@media (prefers-color-scheme: light) {
+/* @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
@@ -75,4 +90,4 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
-}
+} */

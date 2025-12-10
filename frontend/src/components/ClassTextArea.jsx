@@ -18,12 +18,12 @@ export function ClassTextArea({className, classes, onCancel, onSubmit, prompt}) 
     }
 
     return (
-        <div className="inset-0 m-auto border-2 m-10 w-1/2 h-5/6 flex flex-col space-evenly bg-white/25 items-center">
+        <div className="z-2 inset-0 m-auto rounded-md border-2 m-10 w-1/2 h-5/6 flex flex-col space-evenly bg-[var(--color-grey-dark)]/90 items-center">
             <span className="mt-2">Classes</span>
             <div className={`${className} flex justify-center mb-2`}>
                 <textarea 
                 ref={textAreaRef}
-                className="w-full h-full resize-none bg-black/30 rounded-md" 
+                className="w-full h-full resize-none bg-black/30 rounded-md border-1" 
                 placeholder="Write text here" 
                 defaultValue={classes.join("\n")}
                 onChange={(e) => setTextClasses(e.target.value.split("\n"))}
@@ -48,8 +48,8 @@ export function ClassTextArea({className, classes, onCancel, onSubmit, prompt}) 
                 </div>
             </div>
             <div className="w-full h-1/10 pt-5">
-                <button className="w-1/2 h-full" onClick={onCancel}>Cancel</button>
-                <button className="w-1/2 h-full" onClick={saveClasses}>Done</button>
+                <button className="w-1/2 h-full btn border-1" onClick={onCancel}>Cancel</button>
+                <button className="w-1/2 h-full btn border-1" onClick={saveClasses}>Done</button>
             </div>
         </div>
     )

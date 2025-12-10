@@ -116,9 +116,27 @@ export default function Home() {
 
     return (
         <div className="flex flex-col gap-4 pt-10 items-center h-full">
-            <div className="w-1/3">
-                <button className="w-1/2" onClick={() => {setUseCamera(false); setPreview(null);}}>Select & Upload Image</button>
-                <button className="w-1/2" onClick={() => {setUseCamera(true); setPreview(null);}}>Capture Image</button>
+            <div className="w-1/3 bg-white/10 rounded-md p-2 border-1 gap-2 flex relative">
+                <button className={`${useCamera ? 
+                "hover:border-solid \
+                hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)] transition duration-300" 
+                : ""} 
+                w-1/2 rounded-md p-3 z-1 border-transparent border-1`} 
+                onClick={() => {setUseCamera(false); setPreview(null);}}>
+                    Select & Upload Image
+                </button>
+
+                <button className={`${!useCamera ? 
+                "hover:border-solid \
+                hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)] transition duration-300" 
+                : ""} 
+                w-1/2 rounded-md p-3 z-1 border-transparent border-1`} 
+                onClick={() => {setUseCamera(true); setPreview(null);}}>Capture Image</button>
+                
+                <div className={`transition duration-300
+                border-1 border-[var(--color-onyx)] absolute bg-[var(--color-magenta)]/30 h-[calc(100%-theme(space.4))] rounded-md w-[calc(50%-theme(space.4))] ${
+                    useCamera ? "translate-x-[calc(100%+theme(space.4))]" : ""
+                }`}></div>
             </div>
             {!useCamera ?
             <UploadImage className="h-100 w-100" 
@@ -136,13 +154,13 @@ export default function Home() {
             </img>} 
 
             <div>
-                <button onClick={displayClasses}>Review and Edit Class Names</button>
+                <button onClick={displayClasses} className="btn">Review and Edit Class Names</button>
                 {isGettingClasses && 
                     <LoadingSpinner/>
                 }
             </div>
 
-            <button onClick={handlePredict} className="w-100">Predict</button>
+            <button onClick={handlePredict} className="w-100 btn">Predict</button>
             <div className="bg-transparent border-2 h-1/20 rounded-md border-slate-600 overflow-visible">
                 <span className="mr-2">Limit:</span>
                 {/* <input type="text" className="w-10 h-6 bg-gray-600" value={limitProbabilities}></input> */}
@@ -180,7 +198,7 @@ export default function Home() {
                 }
             </div>
             {showClasses && 
-                <div className="absolute bg-black/75 h-full w-full top-0 flex">
+                <div className="absolute bg-black/75 h-full w-full top-0 z-2 flex">
                     <ClassTextArea className="w-1/2 h-8/10 m-auto" 
                     classes={classes} 
                     onCancel={() => setShowClasses(false)} 
