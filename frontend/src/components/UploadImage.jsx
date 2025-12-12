@@ -42,7 +42,7 @@ export function UploadImage({className, changeImage, handleUpload}) {
     return (
         <div>
             {isUploaded && (
-                <button onClick={() => {changeImage(); setIsUploaded(false);}}>Select Another Image</button>
+                <button className="btn" onClick={() => {changeImage(); setIsUploaded(false);}}>Select Another Image</button>
             )}
             {!isUploaded && ( 
                 <div className={`${className} flex flex-col`}>

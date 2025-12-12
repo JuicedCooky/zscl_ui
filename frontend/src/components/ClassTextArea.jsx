@@ -38,7 +38,7 @@ export function ClassTextArea({className, classes, onCancel, onSubmit, prompt}) 
                         ...prev,
                         prefix: e.target.value}))}
                     ></input>
-                    <span className="w-2/10 text-left bg-black/70 rounded-md">Class</span>
+                    <span className="w-2/10 rounded-md text-center">{"<class>"}</span>
                     <input placeholder="suffix" className="w-4/10 bg-white/5 outline-gray-400 outline-1 rounded-md"
                     defaultValue={prompt["suffix"]}
                     onChange={(e) => setPromptCurr(prev => ({

@@ -5,8 +5,11 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { ClassTextArea } from "../components/ClassTextArea";
 import { ProbabilityBar } from "../components/ProbabilityBar";
 import { Camera } from "../components/Camera";
+import { IoIosSend  } from "react-icons/io";
+import { FaEdit } from "react-icons/fa";
 
-export default function Home() {
+
+export default function Home({className}) {
     const [preview, setPreview] = useState(null);
 
     const [results, setResults] = useState(null);
@@ -115,7 +118,7 @@ export default function Home() {
     }, [setPreview] );
 
     return (
-        <div className="flex flex-col gap-4 pt-10 items-center h-full">
+        <div className={`${className} flex flex-col gap-4 pt-10 items-center h-auto`}>
             <div className="w-1/3 bg-white/10 rounded-md p-2 border-1 gap-2 flex relative">
                 <button className={`${useCamera ? 
                 "hover:border-solid \
@@ -134,7 +137,7 @@ export default function Home() {
                 onClick={() => {setUseCamera(true); setPreview(null);}}>Capture Image</button>
                 
                 <div className={`transition duration-300
-                border-1 border-[var(--color-onyx)] absolute bg-[var(--color-magenta)]/30 h-[calc(100%-theme(space.4))] rounded-md w-[calc(50%-theme(space.4))] ${
+                border-1 border-[var(--color-onyx)] absolute bg-[var(--color-magenta)]/60 h-[calc(100%-theme(space.4))] rounded-md w-[calc(50%-theme(space.4))] ${
                     useCamera ? "translate-x-[calc(100%+theme(space.4))]" : ""
                 }`}></div>
             </div>
@@ -144,7 +147,6 @@ export default function Home() {
             handleUpload={handleUpload}></UploadImage>
                 : <Camera setPreview={setPreview} handleUpload={handleUpload}></Camera> 
             }
-
             {(preview && !useCamera) && 
             <img
                 src={preview}
@@ -153,19 +155,31 @@ export default function Home() {
             >
             </img>} 
 
+
+
             <div>
-                <button onClick={displayClasses} className="btn">Review and Edit Class Names</button>
+                <div className="btn gap-4 px-4 flex items-center justify-between">
+                    <FaEdit className="text-[var(--color-honeydew)]"/>
+                    <button onClick={displayClasses} className="">Review and Edit Class Names</button>
+                </div>
                 {isGettingClasses && 
                     <LoadingSpinner/>
                 }
             </div>
 
-            <button onClick={handlePredict} className="w-100 btn">Predict</button>
-            <div className="bg-transparent border-2 h-1/20 rounded-md border-slate-600 overflow-visible">
+            <hr className="w-9/10 border-[var(--color-honeydew)]/50"></hr>
+            <div className="btn gap-4 px-4 flex items-center justify-between">
+                <IoIosSend  className="text-[var(--color-honeydew)]"/>
+                <button onClick={handlePredict} className="">Predict</button>
+            </div>
+            <hr className="w-9/10  border-[var(--color-honeydew)]/50"></hr>
+
+            <span className="w-8/10 text-left text-3xl">Results:</span>
+
+            <div className="flex items-center bg-white/10 border-1 h-15 rounded-md border-[var(--color-onyx)] overflow-visible pl-2">
                 <span className="mr-2">Limit:</span>
-                {/* <input type="text" className="w-10 h-6 bg-gray-600" value={limitProbabilities}></input> */}
                 <select
-                className="bg-slate-800 h-full pl-2" 
+                className="bg-[var(--color-magenta)]/30 rounded-md  w-6/10 h-8/10 pl-2 hover:bg-[var(--color-magenta)]/60" 
                 value={limitProbabilities} 
                 onChange={(e) => setLimitProbabilities(e.target.value)}
                 >
