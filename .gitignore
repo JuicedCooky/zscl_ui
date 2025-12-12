@@ -1,2 +1,3 @@
 __pycache__/
-Aircraft.pth
+backend/Aircraft.pth
+backend/__pycache__/
