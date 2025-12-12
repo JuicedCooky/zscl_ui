@@ -9,13 +9,35 @@ pip install -r ui/requirements.txt
 
 3. Download pretrained ZSCL model: https://drive.google.com/file/d/1QMpFQwiZ3Vkz6b_yLOI3q2j19ljLSzit/view?usp=sharing
 
-## Running
-Run the server starting from the parent directory of this repository:
+### Download node.js
+https://nodejs.org/en/download
+
+### Install frontend packages
+From the parent directory:
 ```
-python -m uvicorn zscl_ui.backend:app --reload
+npm install --prefix ./frontend/
+```
+
+## Running
+### Frontend
+Build the frontend UI:
+From the parent directory:
+```
+npm run build --prefix ./frontend/
+```
+
+### backend
+Run the server starting from the parent directory of this repository:
+
+```
+python -m uvicorn backend.backend:app --reload
+```
+or
+```
+uvicorn backend.backend:app --reload
 ```
 
 Run frontend only:
 ```
-npm --prefix zscl_ui/frontend run dev
+npm --prefix ./frontend run dev
 ```
