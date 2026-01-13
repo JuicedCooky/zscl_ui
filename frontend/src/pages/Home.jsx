@@ -33,6 +33,8 @@ export default function Home({className}) {
 
     const [currentImageData, setImageData] = useState(null);
 
+    const [selectedModels, setSelectedModels] = useState([true,false]);
+
     async function handlePredict(){
         setIsPredicting(true);
         console.log(preview);
@@ -44,13 +46,20 @@ export default function Home({className}) {
                 });
             }
 
-            // const data = await resImage.json();
+            // Send selected models to backend (convert boolean to 0/1)
+            const activeModelsArray = selectedModels.map(m => m ? 1 : 0);
+            await fetch("http://localhost:8000/setactivemodels", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(activeModelsArray)
+            });
 
             setNoImageError(false);
             const res = await fetch("http://localhost:8000/predict", {
                 method: "GET",
             });
-
 
             setResults(await res.json());
 
@@ -180,6 +189,29 @@ export default function Home({className}) {
             </div>
 
             <hr className="w-9/10 border-[var(--color-honeydew)]/50"></hr>
+            <div className="gap-y-4 flex flex-col">
+                <span>Choose Model(s)</span>
+                <div>
+                    <button 
+                    className={`btn ${selectedModels[0] ? "" : "bg-transparent hover:bg-gray-600/50"}`}
+                    onClick={() => {
+                        setSelectedModels(prev => {
+                            const newArray = [...prev];
+                            newArray[0] = !newArray[0];
+                            return newArray;
+                        });
+                    }}>Zero Shot Continual Learning Model(ZSCL)</button>
+                    <button 
+                    className={`btn ${selectedModels[1] ? "" : "bg-transparent hover:bg-gray-600/50"}`}
+                    onClick={() => {
+                        setSelectedModels(prev => {
+                            const newArray = [...prev];
+                            newArray[1] = !newArray[1];
+                            return newArray;
+                        });
+                    }}>Finetune Only Model</button>
+                </div>
+            </div>
             <div className="btn gap-4 px-4 flex items-center justify-between">
                 <IoIosSend  className="text-[var(--color-honeydew)]"/>
                 <button onClick={handlePredict} className="">Predict</button>
@@ -204,20 +236,30 @@ export default function Home({className}) {
                 </select>
             </div>
             <div className="border-2 p-5 rounded-md w-8/10">
-                {isPredicting && 
+                {isPredicting &&
                     <LoadingSpinner/>
                 }
-                {results &&
-                <div>
-                    {
-                        ((limitProbabilities === "all") 
-                        ? Object.entries(results) 
-                        : Object.entries(results).slice(0,Number(limitProbabilities)))
-                        .map(([label,prob]) => (
-                        // <div key={label}>{label}:{prob}</div>
-                        <ProbabilityBar key={label} label={label} prob={prob}></ProbabilityBar>
+                {results && !results.error &&
+                <div className="flex flex-row gap-6">
+                    {Object.entries(results).map(([modelName, modelResults]) => (
+                        <div key={modelName} className="flex flex-col gap-2 flex-1">
+                            <span className="text-xl font-semibold border-b border-[var(--color-honeydew)]/30 pb-2">
+                                {modelName}
+                            </span>
+                            <div>
+                                {((limitProbabilities === "all")
+                                    ? Object.entries(modelResults)
+                                    : Object.entries(modelResults).slice(0, Number(limitProbabilities)))
+                                    .map(([label, prob]) => (
+                                        <ProbabilityBar key={`${modelName}-${label}`} label={label} prob={prob}></ProbabilityBar>
+                                ))}
+                            </div>
+                        </div>
                     ))}
                 </div>
+                }
+                {results?.error &&
+                    <span className="text-red-700">{results.error}</span>
                 }
                 {noImageError &&
                     <span className="text-red-700">ERROR, NO IMAGE SELECTED</span>
