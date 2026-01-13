@@ -45,9 +45,16 @@ export function Camera({setPreview, handleUpload}) {
         enableCamera();
     }, []);
 
+    function handleCancel(){
+        setCapturedImage(null);
+    }
+
     return (
         <div>
             <div className="relative">
+                {capturedImage && (
+                    <button className="btn" onClick={() => { setCapturedImage(null); }}>Clear</button>
+                )}
                 <video
                 ref={videoRef}
                 autoPlay

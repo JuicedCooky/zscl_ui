@@ -32,8 +32,8 @@ function Particles() {
 
   // Rotate animation
   useFrame((state) => {
-    ref.current.rotation.y = state.mouse.x * 0.2;
-    ref.current.rotation.x = state.mouse.y * 0.2;
+    // ref.current.rotation.y = state.mouse.x * 0.2;
+    // ref.current.rotation.x = state.mouse.y * 0.2;
 
     ref.current.rotation.z += 0.0005;
   });

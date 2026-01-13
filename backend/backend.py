@@ -15,9 +15,6 @@ import io
 
 
 base_path = os.path.dirname(__file__)
-print("TEST_________________________________________________________")
-print(base_path)
-print(os.path.join(os.path.dirname(base_path), "frontend/dist/assets"))
 frontend_path = os.path.join(os.path.dirname(base_path), "frontend")
 
 
@@ -121,8 +118,15 @@ def getPrompt():
 def savePrompt(data: dict = Body(...)):
     global prompt_pre, prompt_suf
 
-    prompt_pre = data["prefix"]
-    prompt_suf = data["suffix"]
+    if isinstance(prompt_pre, list):
+        prompt_pre = data[0]["prefix"]
+    else:
+        prompt_pre = data["prefix"]
+
+    if isinstance(prompt_suf, list):
+        prompt_suf = data[0]["suffix"]
+    else:
+        prompt_suf = data["suffix"]
 
     return {"status": "ok"}
 

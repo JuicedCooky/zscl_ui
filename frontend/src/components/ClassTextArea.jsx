@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect} from "react"
+import { Prompt } from "./Prompt";
 
 export function ClassTextArea({className, classes, onCancel, onSubmit, prompt}) {
     const [textClasses, setTextClasses] = useState(classes);
@@ -10,7 +11,6 @@ export function ClassTextArea({className, classes, onCancel, onSubmit, prompt}) 
       if (textAreaRef.current) {
         textAreaRef.current.scrollTop = textAreaRef.current.scrollHeight;
       }
-      console.log(promptCurr);
     }, []);
 
     async function saveClasses() {
@@ -29,24 +29,7 @@ export function ClassTextArea({className, classes, onCancel, onSubmit, prompt}) 
                 onChange={(e) => setTextClasses(e.target.value.split("\n"))}
                 />
             </div>
-            <div className="flex flex-col items-center w-9/10">
-                <span className="mb-2">Prompt</span>
-                <div className="flex w-full gap-4">
-                    <input placeholder="prefix" className="w-4/10 bg-white/5 outline-gray-400 outline-1 rounded-md "
-                    defaultValue={prompt["prefix"]}
-                    onChange={(e) => setPromptCurr(prev => ({
-                        ...prev,
-                        prefix: e.target.value}))}
-                    ></input>
-                    <span className="w-2/10 rounded-md text-center">{"<class>"}</span>
-                    <input placeholder="suffix" className="w-4/10 bg-white/5 outline-gray-400 outline-1 rounded-md"
-                    defaultValue={prompt["suffix"]}
-                    onChange={(e) => setPromptCurr(prev => ({
-                        ...prev,
-                        suffix: e.target.value}))}
-                    ></input>
-                </div>
-            </div>
+            <Prompt setPrompt={setPromptCurr} prompt={promptCurr}/>
             <div className="w-full h-1/10 pt-5">
                 <button className="w-1/2 h-full btn border-1" onClick={onCancel}>Cancel</button>
                 <button className="w-1/2 h-full btn border-1" onClick={saveClasses}>Done</button>

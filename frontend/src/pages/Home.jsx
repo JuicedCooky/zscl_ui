@@ -31,10 +31,21 @@ export default function Home({className}) {
 
     const listedProbOptions = ["1","5","10","20","50","100","all"];
 
+    const [currentImageData, setImageData] = useState(null);
+
     async function handlePredict(){
         setIsPredicting(true);
         console.log(preview);
         if (preview != null){
+            if (currentImageData != null){
+                const resImage = await fetch("http://localhost:8000/upload", {
+                    method: "POST",
+                    body: currentImageData,
+                });
+            }
+
+            // const data = await resImage.json();
+
             setNoImageError(false);
             const res = await fetch("http://localhost:8000/predict", {
                 method: "GET",
@@ -97,9 +108,9 @@ export default function Home({className}) {
         console.log("PROMPT", prompt);
     }
 
+
     const handleUpload = useCallback(async (files) =>
     {
-        console.log(files);
         if (!files || files.length === 0) return; 
         const file = files[0];
         
@@ -107,13 +118,14 @@ export default function Home({className}) {
 
         const formData = new FormData();
         formData.append("file", file);
+        setImageData(formData);
 
-        const res = await fetch("http://localhost:8000/upload", {
-          method: "POST",
-          body: formData,
-        });
+        // const res = await fetch("http://localhost:8000/upload", {
+        //   method: "POST",
+        //   body: formData,
+        // });
 
-        const data = await res.json();
+        // const data = await res.json();
 
     }, [setPreview] );
 

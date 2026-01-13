@@ -12,7 +12,7 @@ function App() {
   return (
     
     <div className="relative w-screen h-screen">
-      <BackgroundDot className=""/>
+      {/* <BackgroundDot className=""/> */}
       <Home className="relative z-10"/>
     </div>
   )
