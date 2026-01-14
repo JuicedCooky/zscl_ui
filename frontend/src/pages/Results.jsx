@@ -1,19 +1,23 @@
 import React, { useState } from "react";
 import results from "../assets/results/results.json";
 
-const MODEL_NAMES = [
-    "Zero Shot Continual Learning Model (ZSCL)",
-    "Finetune Only Model"
+const MODELS = [
+    { name: "Zero Shot Continual Learning Model (ZSCL)", key: "zscl_freeze" },
+    { name: "Finetune Only Model", key: "pure_finetune" }
 ];
+
+const MODEL_NAMES = MODELS.map(m => m.name);
 
 const ROW_LABELS = [
     { key: "accuracy", label: "Accuracy" },
-    { key: "top5", label: "Top-5 Accuracy" },
+    { key: "average_change", label: "Average Change" },
+    { key: "average_change_trained_datasets", label: "Average Change (On trained datasets)" },
+    { key: "average_change_untrained_datasets", label: "Average Change (On untrained datasets)" },
 ];
 
 // Temporary chart data - task/dataset performance
 const CHART_DATA = {
-    labels: ["CIFAR-10", "CIFAR-100", "ImageNet", "Flowers102", "Food101"],
+    labels: ["version-0 ()", "version-1 (DTD)", "version-2 (DTD,MNIST)", "version-3 (DTD,MNIST,EuroSAT)", "version-4 (DTD,MNIST,EuroSAT,Flowers)"],
     datasets: [
         {
             name: "Zero Shot Continual Learning Model (ZSCL)",
@@ -96,17 +100,21 @@ export default function Results({ className }) {
                                     key={row.key}
                                     // className={idx % 2 === 0 ? "bg-white/5" : ""}
                                 >
-                                    <td className="p-4 text-left font-medium border-r border-[var(--color-honeydew)]/20">
+                                    <td className={`p-4 text-left font-medium border-r border-[var(--color-honeydew)]/20  ${idx % 2 === 0 ? " bg-white/5" : ""}`}>
                                         {row.label}
                                     </td>
-                                    {activeModels.map((modelName) => (
-                                        <td
-                                            key={`${modelName}-${row.key}`}
-                                            className={`"p-4 text-center text-gray-400" ${idx % 2 === 0 ? "bg-white/5" : ""}`}
-                                        >
-                                            —
-                                        </td>
-                                    ))}
+                                    {activeModels.map((modelName) => {
+                                        const model = MODELS.find(m => m.name === modelName);
+                                        const value = model && results[model.key] ? results[model.key][row.key] : "—";
+                                        return (
+                                            <td
+                                                key={`${modelName}-${row.key}`}
+                                                className={`p-4 text-center ${idx % 2 === 0 ? "bg-white/5" : ""}`}
+                                            >
+                                                {typeof value === "number" || !isNaN(value) ? `${value}%` : value}
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             ))}
                         </tbody>
@@ -194,8 +202,8 @@ export default function Results({ className }) {
                             </div>
                         ) : (
                             /* Line Chart */
-                            <div className="relative h-64">
-                                <svg className="w-full h-48" viewBox="0 0 500 200" preserveAspectRatio="none">
+                            <div className="relative">
+                                <svg className="w-full" style={{ height: "300px" }} viewBox="0 0 500 240" preserveAspectRatio="xMidYMid meet">
                                     {/* Grid lines */}
                                     {[0, 25, 50, 75, 100].map((val) => (
                                         <line
@@ -235,40 +243,75 @@ export default function Results({ className }) {
                                                         const x = (idx / (CHART_DATA.labels.length - 1)) * 460 + 20;
                                                         const y = 200 - val * 2;
                                                         return (
-                                                            <g key={`${dataset.name}-point-${idx}`} className="group">
+                                                            <g key={`${dataset.name}-point-${idx}`} className="group cursor-pointer">
+                                                                {/* Larger invisible hover area */}
+                                                                <circle
+                                                                    cx={x}
+                                                                    cy={y}
+                                                                    r="10"
+                                                                    fill="transparent"
+                                                                />
+                                                                {/* Visible dot */}
                                                                 <circle
                                                                     cx={x}
                                                                     cy={y}
                                                                     r="6"
                                                                     fill={dataset.color}
-                                                                    className="transition-all duration-300 hover:r-8"
+                                                                    className="transition-all duration-300 group-hover:r-8"
                                                                 />
-                                                                <title>{`${CHART_DATA.labels[idx]}: ${val}%`}</title>
+                                                                {/* Tooltip */}
+                                                                <g className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                                                    <rect
+                                                                        x={x - 35}
+                                                                        y={y - 35}
+                                                                        width="70"
+                                                                        height="24"
+                                                                        rx="4"
+                                                                        fill="rgba(0,0,0,0.9)"
+                                                                    />
+                                                                    <text
+                                                                        x={x}
+                                                                        y={y - 18}
+                                                                        textAnchor="middle"
+                                                                        fill="white"
+                                                                        fontSize="12"
+                                                                    >
+                                                                        {`${val}%`}
+                                                                    </text>
+                                                                </g>
                                                             </g>
                                                         );
                                                     })}
                                                 </g>
                                             );
                                         })}
+                                    {/* X-axis labels inside SVG */}
+                                    {CHART_DATA.labels.map((label, idx) => {
+                                        const x = (idx / (CHART_DATA.labels.length - 1)) * 460 + 20;
+                                        return (
+                                            <text
+                                                key={label}
+                                                x={x}
+                                                y="220"
+                                                textAnchor="middle"
+                                                fill="rgb(156, 163, 175)"
+                                                fontSize="12"
+                                            >
+                                                {label}
+                                            </text>
+                                        );
+                                    })}
                                 </svg>
-                                {/* X-axis labels */}
-                                <div className="flex justify-between px-2 mt-2">
-                                    {CHART_DATA.labels.map((label) => (
-                                        <span key={label} className="text-sm text-gray-400">
-                                            {label}
-                                        </span>
-                                    ))}
-                                </div>
                             </div>
                         )}
 
                         {/* Y-axis labels */}
                         <div className="flex justify-between text-xs text-gray-500 px-4">
-                            <span>0%</span>
+                            {/* <span>0%</span>
                             <span>25%</span>
                             <span>50%</span>
                             <span>75%</span>
-                            <span>100%</span>
+                            <span>100%</span> */}
                         </div>
                     </div>
                 )}

@@ -1,22 +1,28 @@
 {
     "pure_finetune": {
-        "accuracy": 75.90,
+        "accuracy": 75.41,
+        "average_change" : 2.51,
+        "average_change_trained_datasets": 8.52,
+        "average_change_untrained_datasets": -1.50,
         "running_accuracy": [
-            65.37,
-            65.55,
-            67.64,
-            72.27,
-            75.90
+            65.38,
+            65.98,
+            67.42,
+            71.30,
+            75.41
         ],
         "transfer_scores": [
-            -0.01,
-            0.14,
-            2.45,
-            -0.04
+            0.60,
+            1.44,
+            3.88,
+            4.11
         ]
     },
     "zscl_freeze": {
-        "accuracy": "78.03",
+        "accuracy": 78.03,
+        "average_change": 3.17,
+        "average_change_trained_datasets": 8.71,
+        "average_change_untrained_datasets": -0.53,
         "running_accuracy": [
             65.37,
             68.78,
