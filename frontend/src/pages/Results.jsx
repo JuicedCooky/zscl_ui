@@ -203,7 +203,7 @@ export default function Results({ className }) {
                 ) : (
                     <div className="flex flex-col gap-4">
                         {/* Chart Legend */}
-                        <div className="flex gap-6 justify-center mb-4">
+                        <div className="flex gap-6 justify-center mb-8">
                             {chartData.datasets
                                 .filter((dataset) => activeModels.includes(dataset.name))
                                 .map((dataset) => (
@@ -219,7 +219,16 @@ export default function Results({ className }) {
 
                         {chartType === "bar" ? (
                             /* Bar Chart */
-                            <div className="flex items-end justify-around gap-4 h-64">
+                            <div className="flex gap-2 h-64">
+                                {/* Y-axis labels */}
+                                <div className="flex flex-col justify-between h-48 text-xs text-gray-400 pr-2">
+                                    <span>{yAxisMax}%</span>
+                                    <span>{Math.round(yAxisMax * 0.75)}%</span>
+                                    <span>{Math.round(yAxisMax * 0.5)}%</span>
+                                    <span>{Math.round(yAxisMax * 0.25)}%</span>
+                                    <span>0%</span>
+                                </div>
+                                <div className="flex items-end justify-around gap-4 flex-1">
                                 {chartData.labels.map((label, labelIdx) => (
                                     <div key={label} className="flex flex-col items-center gap-2 flex-1">
                                         <div className="flex items-end gap-1 h-48">
@@ -245,22 +254,34 @@ export default function Results({ className }) {
                                         <span className="text-sm text-gray-400">{label}</span>
                                     </div>
                                 ))}
+                                </div>
                             </div>
                         ) : (
                             /* Line Chart */
                             <div className="relative">
-                                <svg className="w-full" style={{ height: "300px" }} viewBox="0 0 500 240" preserveAspectRatio="xMidYMid meet">
+                                <svg className="w-full" style={{ height: "300px" }} viewBox="0 0 550 260" preserveAspectRatio="xMidYMid meet">
                                     {/* Grid lines */}
-                                    {[0, 25, 50, 75, 100].map((val) => (
-                                        <line
-                                            key={val}
-                                            x1="0"
-                                            y1={200 - val * 2}
-                                            x2="500"
-                                            y2={200 - val * 2}
-                                            stroke="rgba(255,255,255,0.1)"
-                                            strokeWidth="1"
-                                        />
+                                    {[0, 0.25, 0.5, 0.75, 1].map((fraction) => (
+                                        <g key={fraction}>
+                                            <line
+                                                x1="50"
+                                                y1={220 - fraction * 200}
+                                                x2="530"
+                                                y2={220 - fraction * 200}
+                                                stroke="rgba(255,255,255,0.1)"
+                                                strokeWidth="1"
+                                            />
+                                            {/* Y-axis labels */}
+                                            <text
+                                                x="45"
+                                                y={220 - fraction * 200 + 4}
+                                                textAnchor="end"
+                                                fill="rgb(156, 163, 175)"
+                                                fontSize="11"
+                                            >
+                                                {Math.round(yAxisMax * fraction)}%
+                                            </text>
+                                        </g>
                                     ))}
                                     {/* Lines for each dataset */}
                                     {chartData.datasets
@@ -268,8 +289,8 @@ export default function Results({ className }) {
                                         .map((dataset) => {
                                             const points = dataset.values
                                                 .map((val, idx) => {
-                                                    const x = (idx / (chartData.labels.length - 1)) * 460 + 20;
-                                                    const y = 200 - (val / yAxisMax) * 200;
+                                                    const x = (idx / (chartData.labels.length - 1)) * 480 + 50;
+                                                    const y = 220 - (val / yAxisMax) * 200;
                                                     return `${x},${y}`;
                                                 })
                                                 .join(" ");
@@ -286,8 +307,8 @@ export default function Results({ className }) {
                                                     />
                                                     {/* Data points */}
                                                     {dataset.values.map((val, idx) => {
-                                                        const x = (idx / (chartData.labels.length - 1)) * 460 + 20;
-                                                        const y = 200 - (val / yAxisMax) * 200;
+                                                        const x = (idx / (chartData.labels.length - 1)) * 480 + 50;
+                                                        const y = 220 - (val / yAxisMax) * 200;
                                                         return (
                                                             <g key={`${dataset.name}-point-${idx}`} className="group cursor-pointer">
                                                                 {/* Larger invisible hover area */}
@@ -333,12 +354,12 @@ export default function Results({ className }) {
                                         })}
                                     {/* X-axis labels inside SVG */}
                                     {chartData.labels.map((label, idx) => {
-                                        const x = (idx / (chartData.labels.length - 1)) * 460 + 20;
+                                        const x = (idx / (chartData.labels.length - 1)) * 480 + 50;
                                         return (
                                             <text
                                                 key={label}
                                                 x={x}
-                                                y="220"
+                                                y="240"
                                                 textAnchor="middle"
                                                 fill="rgb(156, 163, 175)"
                                                 fontSize="12"
@@ -351,14 +372,6 @@ export default function Results({ className }) {
                             </div>
                         )}
 
-                        {/* Y-axis labels */}
-                        <div className="flex justify-between text-xs text-gray-500 px-4">
-                            {/* <span>0%</span>
-                            <span>25%</span>
-                            <span>50%</span>
-                            <span>75%</span>
-                            <span>100%</span> */}
-                        </div>
                     </div>
                 )}
             </div>
