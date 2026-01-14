@@ -15,26 +15,29 @@ const ROW_LABELS = [
     { key: "average_change_untrained_datasets", label: "Average Change (On untrained datasets)" },
 ];
 
-// Temporary chart data - task/dataset performance
-const CHART_DATA = {
-    labels: ["version-0 ()", "version-1 (DTD)", "version-2 (DTD,MNIST)", "version-3 (DTD,MNIST,EuroSAT)", "version-4 (DTD,MNIST,EuroSAT,Flowers)"],
-    datasets: [
-        {
-            name: "Zero Shot Continual Learning Model (ZSCL)",
-            values: [92.5, 78.3, 68.9, 85.2, 79.1],
-            color: "var(--color-magenta)",
-        },
-        {
-            name: "Finetune Only Model",
-            values: [88.1, 71.5, 62.4, 78.9, 72.3],
-            color: "var(--color-honeydew)",
-        },
-    ],
+// Chart data options - maps to array keys in results.json
+const CHART_OPTIONS = [
+    { key: "running_accuracy", label: "Running Accuracy" },
+    { key: "transfer_scores", label: "Transfer Scores" },
+];
+
+// X-axis labels for each chart option
+const CHART_LABELS = {
+    running_accuracy: ["version-0 ()", "version-1 (DTD)", "version-2 (DTD,MNIST)", "version-3 (DTD,MNIST,EuroSAT)", "version-4 (DTD,MNIST,EuroSAT,Flowers)"],
+    transfer_scores: ["DTD", "MNIST", "EuroSAT", "Flowers"],
+};
+
+// Colors for each model
+const MODEL_COLORS = {
+    "Zero Shot Continual Learning Model (ZSCL)": "var(--color-magenta)",
+    "Finetune Only Model": "var(--color-honeydew)",
 };
 
 export default function Results({ className }) {
     const [selectedModels, setSelectedModels] = useState([true, false]);
     const [chartType, setChartType] = useState("bar"); // "bar" or "line"
+    const [selectedChartData, setSelectedChartData] = useState("running_accuracy");
+    const [useMaxScale, setUseMaxScale] = useState(false);
 
     const toggleModel = (index) => {
         setSelectedModels(prev => {
@@ -45,6 +48,23 @@ export default function Results({ className }) {
     };
 
     const activeModels = MODEL_NAMES.filter((_, idx) => selectedModels[idx]);
+
+    // Generate chart data dynamically from results.json
+    const chartData = {
+        labels: CHART_LABELS[selectedChartData] || [],
+        datasets: MODELS.map(model => ({
+            name: model.name,
+            values: results[model.key]?.[selectedChartData] || [],
+            color: MODEL_COLORS[model.name],
+        })),
+    };
+
+    // Calculate max value across all active models for dynamic scaling
+    const activeDataValues = chartData.datasets
+        .filter(dataset => activeModels.includes(dataset.name))
+        .flatMap(dataset => dataset.values);
+    const maxDataValue = activeDataValues.length > 0 ? Math.max(...activeDataValues) : 100;
+    const yAxisMax = useMaxScale ? Math.ceil(maxDataValue * 1.1) : 100; // Add 10% padding when using max scale
 
     return (
         <div className={`${className} flex flex-col gap-4 pt-10 items-center h-auto`}>
@@ -125,8 +145,21 @@ export default function Results({ className }) {
             {/* Chart Section */}
             <div className="w-9/10 flex items-center justify-between mt-6">
                 <h2 className="text-2xl font-bold">Performance Across Datasets</h2>
-                {/* Chart Type Toggle */}
-                <div className="flex bg-white/10 rounded-md p-1 gap-1">
+                <div className="flex items-center gap-4">
+                    {/* Chart Data Dropdown */}
+                    <select
+                        className="bg-white/10 border border-[var(--color-onyx)] rounded-md px-3 py-2 hover:bg-white/20 transition duration-300"
+                        value={selectedChartData}
+                        onChange={(e) => setSelectedChartData(e.target.value)}
+                    >
+                        {CHART_OPTIONS.map(option => (
+                            <option key={option.key} value={option.key}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                    {/* Chart Type Toggle */}
+                    <div className="flex bg-white/10 rounded-md p-1 gap-1">
                     <button
                         className={`px-4 py-2 rounded transition duration-300 ${
                             chartType === "bar"
@@ -147,6 +180,19 @@ export default function Results({ className }) {
                     >
                         Line
                     </button>
+                    </div>
+                    {/* Max Scale Toggle */}
+                    <button
+                        className={`px-4 py-2 rounded transition duration-300 border ${
+                            useMaxScale
+                                ? "bg-[var(--color-magenta)]/60 border-[var(--color-magenta)]"
+                                : "bg-white/10 border-transparent hover:bg-white/20"
+                        }`}
+                        onClick={() => setUseMaxScale(!useMaxScale)}
+                        title="Scale Y-axis to max data value"
+                    >
+                        Auto Scale (Y-axis)
+                    </button>
                 </div>
             </div>
             <div className="w-9/10 border-2 border-[var(--color-onyx)] rounded-md p-6">
@@ -158,7 +204,7 @@ export default function Results({ className }) {
                     <div className="flex flex-col gap-4">
                         {/* Chart Legend */}
                         <div className="flex gap-6 justify-center mb-4">
-                            {CHART_DATA.datasets
+                            {chartData.datasets
                                 .filter((dataset) => activeModels.includes(dataset.name))
                                 .map((dataset) => (
                                     <div key={dataset.name} className="flex items-center gap-2">
@@ -174,17 +220,17 @@ export default function Results({ className }) {
                         {chartType === "bar" ? (
                             /* Bar Chart */
                             <div className="flex items-end justify-around gap-4 h-64">
-                                {CHART_DATA.labels.map((label, labelIdx) => (
+                                {chartData.labels.map((label, labelIdx) => (
                                     <div key={label} className="flex flex-col items-center gap-2 flex-1">
                                         <div className="flex items-end gap-1 h-48">
-                                            {CHART_DATA.datasets
+                                            {chartData.datasets
                                                 .filter((dataset) => activeModels.includes(dataset.name))
                                                 .map((dataset) => (
                                                     <div
                                                         key={`${dataset.name}-${label}`}
                                                         className="w-8 rounded-t transition-all duration-300 relative group"
                                                         style={{
-                                                            height: `${dataset.values[labelIdx] * 0.48}%`,
+                                                            height: `${(dataset.values[labelIdx] / yAxisMax) * 100}%`,
                                                             backgroundColor: dataset.color,
                                                             opacity: 0.8,
                                                         }}
@@ -217,13 +263,13 @@ export default function Results({ className }) {
                                         />
                                     ))}
                                     {/* Lines for each dataset */}
-                                    {CHART_DATA.datasets
+                                    {chartData.datasets
                                         .filter((dataset) => activeModels.includes(dataset.name))
                                         .map((dataset) => {
                                             const points = dataset.values
                                                 .map((val, idx) => {
-                                                    const x = (idx / (CHART_DATA.labels.length - 1)) * 460 + 20;
-                                                    const y = 200 - val * 2;
+                                                    const x = (idx / (chartData.labels.length - 1)) * 460 + 20;
+                                                    const y = 200 - (val / yAxisMax) * 200;
                                                     return `${x},${y}`;
                                                 })
                                                 .join(" ");
@@ -240,8 +286,8 @@ export default function Results({ className }) {
                                                     />
                                                     {/* Data points */}
                                                     {dataset.values.map((val, idx) => {
-                                                        const x = (idx / (CHART_DATA.labels.length - 1)) * 460 + 20;
-                                                        const y = 200 - val * 2;
+                                                        const x = (idx / (chartData.labels.length - 1)) * 460 + 20;
+                                                        const y = 200 - (val / yAxisMax) * 200;
                                                         return (
                                                             <g key={`${dataset.name}-point-${idx}`} className="group cursor-pointer">
                                                                 {/* Larger invisible hover area */}
@@ -286,8 +332,8 @@ export default function Results({ className }) {
                                             );
                                         })}
                                     {/* X-axis labels inside SVG */}
-                                    {CHART_DATA.labels.map((label, idx) => {
-                                        const x = (idx / (CHART_DATA.labels.length - 1)) * 460 + 20;
+                                    {chartData.labels.map((label, idx) => {
+                                        const x = (idx / (chartData.labels.length - 1)) * 460 + 20;
                                         return (
                                             <text
                                                 key={label}
