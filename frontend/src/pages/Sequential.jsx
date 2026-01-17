@@ -8,7 +8,7 @@ import { Camera } from "../components/Camera";
 import { IoIosSend } from "react-icons/io";
 import { FaEdit } from "react-icons/fa";
 
-const SEQUENTIAL_DATASETS = ["Base Model", "DTD", "MNIST", "EuroSAT", "Flowers"];
+const SEQUENTIAL_DATASETS = ["Base Model/CLIP", "DTD", "MNIST", "EuroSAT", "Flowers"];
 const TRAINING_METHODS = [
     { id: "finetune", label: "Finetune Only" },
     { id: "zscl", label: "ZSCL" },
@@ -56,7 +56,8 @@ export default function Sequential({ className }) {
         console.log(preview);
 
         // Validate selections
-        if (selectedUpTo < 0 || !selectedMethod) {
+        // Base Model (index 0) doesn't require method selection
+        if (selectedUpTo < 0 || (selectedUpTo > 0 && !selectedMethod)) {
             setNoSelectionError(true);
             setIsPredicting(false);
             return;
@@ -245,7 +246,7 @@ export default function Sequential({ className }) {
                 </div>
             </div>
 
-            {selectedUpTo >= 0 && (
+            {selectedUpTo > 0 && (
                 <div className="gap-y-4 flex flex-col">
                     <span>2. Choose Training Method</span>
                     <p className="text-sm text-[var(--color-honeydew)]/70">
@@ -317,7 +318,7 @@ export default function Sequential({ className }) {
                     <span className="text-red-700">ERROR, NO IMAGE SELECTED</span>
                 }
                 {noSelectionError &&
-                    <span className="text-red-700">ERROR, SELECT BOTH DATASET AND TRAINING METHOD</span>
+                    <span className="text-red-700">ERROR, SELECT A DATASET{selectedUpTo > 0 ? " AND TRAINING METHOD" : ""}</span>
                 }
             </div>
             {showClasses &&

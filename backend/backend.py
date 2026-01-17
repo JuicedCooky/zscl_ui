@@ -38,8 +38,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Model paths array (for Home page)
 model_paths = [
-    os.path.join(base_path, "models/frozen_zscl.pth"),
-    os.path.join(base_path, "models/pure_finetune.pth"),  # Temporary placeholder path
+    os.path.join(base_path, "models/zscl+freeze/flowers.pth"),
+    os.path.join(base_path, "models/finetune/flowers.pth"),  # Temporary placeholder path
 ]
 
 # Active models array (0 = inactive, 1 = active)
@@ -232,31 +232,40 @@ def setActiveModels(data: list = Body(...)):
     return {"status": "ok", "active": active_models}
 
 
+# Flag to indicate if base CLIP should be used
+use_base_clip = False
+
 @app.post("/setsequentialmodel")
 def setSequentialModel(data: dict = Body(...)):
     """
     Set the sequential model based on dataset and training method selection.
     Receives: { datasetIndex: int, dataset: str, method: str }
     """
-    global sequential_model_path, loaded_models
+    global sequential_model_path, loaded_models, use_base_clip
 
     dataset_index = data.get("datasetIndex", -1)
     dataset = data.get("dataset", "").lower().replace(" ", "")
     method = data.get("method")
 
+    # Reset flags
+    use_base_clip = False
+    sequential_model_path = None
+
     if dataset_index < 0:
         return {"error": "No dataset selected"}
 
+    # For base model, use the original CLIP model (no fine-tuning)
+    # No method selection needed for base model
+    if dataset_index == 0 or dataset == "basemodel":
+        use_base_clip = True
+        return {"status": "ok", "model": "Base CLIP (ViT-B/16)"}
+
+    # For other datasets, method must be selected
     if not method:
         return {"error": "No training method selected"}
 
     if method not in METHOD_FOLDERS:
         return {"error": f"Unknown method: {method}"}
-
-    # For base model, use the original CLIP model (no fine-tuning)
-    if dataset_index == 0 or dataset == "basemodel":
-        sequential_model_path = None  # Will use base CLIP
-        return {"status": "ok", "model": "Base CLIP (ViT-B/16)"}
 
     # Construct model path: models/{method}/{dataset}.pth
     method_folder = METHOD_FOLDERS[method]
@@ -292,7 +301,7 @@ def setSequentialModel(data: dict = Body(...)):
 @app.get("/predictsequential")
 def predictSequential():
     """Predict using the sequential model selection"""
-    global uploaded_image, class_names, prompt_pre, prompt_suf, sequential_model_path, loaded_models
+    global uploaded_image, class_names, prompt_pre, prompt_suf, sequential_model_path, loaded_models, use_base_clip
 
     if prompt_pre.endswith(" "):
         prompt_pre = prompt_pre[:-1]
@@ -302,12 +311,16 @@ def predictSequential():
     if uploaded_image is None:
         return {"error": "No image uploaded yet"}
 
+    # Check if a model has been selected
+    if not use_base_clip and sequential_model_path is None:
+        return {"error": "No model selected"}
+
     try:
         image = pre_process(uploaded_image).unsqueeze(0).to(device)
         text = clip.tokenize(prompts).to(device)
 
-        # Use base CLIP if no sequential model selected
-        if sequential_model_path is None:
+        # Use base CLIP if explicitly selected
+        if use_base_clip:
             model, _, _ = clip.load("ViT-B/16", device=device, jit=False)
             model_name = "Base CLIP"
         else:
