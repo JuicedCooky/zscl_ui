@@ -2,11 +2,15 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import './App.css'
 import Home from './pages/Home.jsx'
 import About from './pages/About.jsx'
+import Sequential from './pages/Sequential.jsx'
 import React from "react"
 import './index.css'
 import { IoHomeOutline } from "react-icons/io5"
 import { IoInformationCircleOutline } from "react-icons/io5"
 import Results from './pages/Results.jsx'
+import { IoMdBook } from "react-icons/io";
+import { IoLayers } from "react-icons/io5";
+
 
 function App() {
   return (
@@ -30,6 +34,21 @@ function App() {
           </NavLink>
 
           <NavLink
+            to="/sequential"
+            className={({ isActive }) =>
+              `p-3 rounded-lg transition duration-300 flex flex-col items-center gap-1 ${
+                isActive
+                  ? 'bg-[var(--color-magenta)]/60 text-[var(--color-honeydew)]'
+                  : 'hover:bg-[var(--color-magenta)]/30 text-[var(--color-honeydew)]/70'
+              }`
+            }
+            title="Sequential"
+          >
+            <IoLayers className="text-2xl" />
+            <span className="text-xs">Sequential</span>
+          </NavLink>
+
+          <NavLink
             to="/results"
             className={({ isActive }) =>
               `p-3 rounded-lg transition duration-300 flex flex-col items-center gap-1 ${isActive
@@ -39,7 +58,7 @@ function App() {
             }
             title="Results"
           >
-            <IoInformationCircleOutline className="text-2xl" />
+            <IoMdBook className="text-2xl" />
             <span className="text-xs">Results</span>
           </NavLink>
 
@@ -63,6 +82,7 @@ function App() {
         <div className="flex-1 overflow-auto">
           <Routes>
             <Route path="/" element={<Home className="relative z-10" />} />
+            <Route path="/sequential" element={<Sequential className="relative z-10" />} />
             <Route path="/results" element={<Results className="relative z-10" />} />
             <Route path="/about" element={<About className="relative z-10" />} />
           </Routes>

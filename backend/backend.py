@@ -36,7 +36,7 @@ uploaded_image = None
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Model paths array
+# Model paths array (for Home page)
 model_paths = [
     os.path.join(base_path, "models/frozen_zscl.pth"),
     os.path.join(base_path, "models/pure_finetune.pth"),  # Temporary placeholder path
@@ -47,6 +47,21 @@ active_models = [1, 0]  # First model active by default
 
 # Dictionary to store loaded models
 loaded_models = {}
+
+# Sequential model configuration (for Sequential page)
+# Maps method folder names to their file prefixes
+METHOD_FOLDERS = {
+    "finetune": "finetune",
+    "zscl": "zscl",
+    "zscl+freeze": "zscl+freeze",
+    "zscl+ogd": "zscl+ogd",
+}
+
+# Dataset names as they appear in model filenames (lowercase)
+DATASET_NAMES = ["base", "dtd", "mnist", "eurosat", "flowers"]
+
+# Current sequential model selection
+sequential_model_path = None
 
 # Load base CLIP components
 _, _, pre_process = clip.load("ViT-B/16", device=device, jit=False)
@@ -215,3 +230,101 @@ def setActiveModels(data: list = Body(...)):
                 return {"error": f"Failed to load model {model_paths[i]}: {str(e)}"}
 
     return {"status": "ok", "active": active_models}
+
+
+@app.post("/setsequentialmodel")
+def setSequentialModel(data: dict = Body(...)):
+    """
+    Set the sequential model based on dataset and training method selection.
+    Receives: { datasetIndex: int, dataset: str, method: str }
+    """
+    global sequential_model_path, loaded_models
+
+    dataset_index = data.get("datasetIndex", -1)
+    dataset = data.get("dataset", "").lower().replace(" ", "")
+    method = data.get("method")
+
+    if dataset_index < 0:
+        return {"error": "No dataset selected"}
+
+    if not method:
+        return {"error": "No training method selected"}
+
+    if method not in METHOD_FOLDERS:
+        return {"error": f"Unknown method: {method}"}
+
+    # For base model, use the original CLIP model (no fine-tuning)
+    if dataset_index == 0 or dataset == "basemodel":
+        sequential_model_path = None  # Will use base CLIP
+        return {"status": "ok", "model": "Base CLIP (ViT-B/16)"}
+
+    # Construct model path: models/{method}/{dataset}.pth
+    method_folder = METHOD_FOLDERS[method]
+    models_dir = os.path.join(base_path, "models", method_folder)
+
+    # Find the model file for this dataset
+    dataset_name = DATASET_NAMES[dataset_index].lower()
+
+    # Look for model files matching the dataset name
+    model_file = None
+    if os.path.exists(models_dir):
+        for filename in os.listdir(models_dir):
+            if filename.endswith(".pth") and dataset_name in filename.lower():
+                model_file = filename
+                break
+
+    if not model_file:
+        return {"error": f"Model not found for {dataset} with method {method}"}
+
+    model_path = os.path.join(models_dir, model_file)
+    sequential_model_path = model_path
+
+    # Load the model if not already loaded
+    if model_path not in loaded_models:
+        try:
+            loaded_models[model_path] = load_model(model_path)
+        except Exception as e:
+            return {"error": f"Failed to load model: {str(e)}"}
+
+    return {"status": "ok", "model": model_file}
+
+
+@app.get("/predictsequential")
+def predictSequential():
+    """Predict using the sequential model selection"""
+    global uploaded_image, class_names, prompt_pre, prompt_suf, sequential_model_path, loaded_models
+
+    if prompt_pre.endswith(" "):
+        prompt_pre = prompt_pre[:-1]
+
+    prompts = [f"{prompt_pre} {name} {prompt_suf}".strip() for name in class_names]
+
+    if uploaded_image is None:
+        return {"error": "No image uploaded yet"}
+
+    try:
+        image = pre_process(uploaded_image).unsqueeze(0).to(device)
+        text = clip.tokenize(prompts).to(device)
+
+        # Use base CLIP if no sequential model selected
+        if sequential_model_path is None:
+            model, _, _ = clip.load("ViT-B/16", device=device, jit=False)
+            model_name = "Base CLIP"
+        else:
+            if sequential_model_path not in loaded_models:
+                return {"error": "Model not loaded"}
+            model = loaded_models[sequential_model_path]
+            model_name = os.path.basename(sequential_model_path)
+
+        with torch.no_grad():
+            logits_per_image, _ = model(image, text)
+            probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+
+        result = dict(zip(prompts, probs.tolist()[0]))
+        result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
+
+        return {model_name: result}
+
+    except Exception as e:
+        print("Error:", e)
+        return {"error": str(e)}

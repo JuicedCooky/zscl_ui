@@ -1003,3 +1003,4 @@ school
 university
 person
 motorcycle
+human

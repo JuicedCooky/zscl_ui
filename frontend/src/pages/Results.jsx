@@ -120,7 +120,7 @@ export default function Results({ className }) {
                                     key={row.key}
                                     // className={idx % 2 === 0 ? "bg-white/5" : ""}
                                 >
-                                    <td className={`p-4 text-left font-medium border-r border-[var(--color-honeydew)]/20  ${idx % 2 === 0 ? " bg-white/5" : ""}`}>
+                                    <td className={`p-4 text-left font-medium border-r border-[var(--color-honeydew)]/20 border-2  ${idx % 2 === 0 ? " bg-white/5" : ""}`}>
                                         {row.label}
                                     </td>
                                     {activeModels.map((modelName) => {

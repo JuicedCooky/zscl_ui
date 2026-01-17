@@ -18,7 +18,7 @@ export function ClassTextArea({className, classes, onCancel, onSubmit, prompt}) 
     }
 
     return (
-        <div className="z-2 inset-0 m-auto rounded-md border-2 m-10 w-1/2 h-5/6 flex flex-col space-evenly bg-[var(--color-grey-dark)]/90 items-center">
+        <div className="z-2 inset-0 m-auto rounded-md border-2 my-5 w-1/2 max-h-screen fixed flex flex-col space-evenly bg-[var(--color-grey-dark)]/90 items-center">
             <span className="mt-2">Classes</span>
             <div className={`${className} flex justify-center mb-2`}>
                 <textarea 
