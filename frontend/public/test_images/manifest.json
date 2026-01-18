@@ -1,0 +1,62 @@
+{
+  "dtd": [
+    "blotchy_0067.jpg",
+    "crosshatched_0044.jpg",
+    "crystalline_0213.jpg",
+    "grid_0069.jpg",
+    "potholed_0118.jpg",
+    "smeared_0023.jpg",
+    "stratified_0050.jpg",
+    "stratified_0051.jpg",
+    "studded_0036.jpg",
+    "veined_0069.jpg"
+  ],
+  "eurosat": [
+    "AnnualCrop_1006.jpg",
+    "Forest_1035.jpg",
+    "HerbaceousVegetation_1006.jpg",
+    "Highway_1004.jpg",
+    "Industrial_1005.jpg",
+    "Pasture_1005.jpg",
+    "PermanentCrop_1017.jpg",
+    "Residential_1005.jpg",
+    "River_1006.jpg",
+    "SeaLake_1006.jpg"
+  ],
+  "flowers": [
+    "image_00038.jpg",
+    "image_00395.jpg",
+    "image_03037.jpg",
+    "image_03781.jpg",
+    "image_04484.jpg",
+    "image_04783.jpg",
+    "image_05350.jpg",
+    "image_05978.jpg",
+    "image_06891.jpg",
+    "image_08183.jpg"
+  ],
+  "imagenet": [
+    "ILSVRC2012_val_00002230.JPEG",
+    "ILSVRC2012_val_00002296.JPEG",
+    "ILSVRC2012_val_00003008.JPEG",
+    "ILSVRC2012_val_00003898.JPEG",
+    "ILSVRC2012_val_00005172.JPEG",
+    "ILSVRC2012_val_00006494.JPEG",
+    "ILSVRC2012_val_00006710.JPEG",
+    "ILSVRC2012_val_00008770.JPEG",
+    "ILSVRC2012_val_00009023.JPEG",
+    "ILSVRC2012_val_00046915.JPEG"
+  ],
+  "mnist": [
+    "img_132.jpg",
+    "img_174.jpg",
+    "img_2.jpg",
+    "img_22.jpg",
+    "img_235.jpg",
+    "img_255.jpg",
+    "img_401.jpg",
+    "img_48.jpg",
+    "img_80.jpg",
+    "img_96.jpg"
+  ]
+}

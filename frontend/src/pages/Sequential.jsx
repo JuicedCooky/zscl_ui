@@ -5,8 +5,10 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { ClassTextArea } from "../components/ClassTextArea";
 import { ProbabilityBar } from "../components/ProbabilityBar";
 import { Camera } from "../components/Camera";
+import { DatasetImageSelector } from "../components/DatasetImageSelector";
 import { IoIosSend } from "react-icons/io";
 import { FaEdit } from "react-icons/fa";
+import { IoFolderOpenOutline } from "react-icons/io5";
 
 const SEQUENTIAL_DATASETS = ["Base Model/CLIP", "DTD", "MNIST", "EuroSAT", "Flowers"];
 const TRAINING_METHODS = [
@@ -31,7 +33,8 @@ export default function Sequential({ className }) {
         suffix: null,
     });
 
-    const [useCamera, setUseCamera] = useState(false);
+    // Image input mode: "upload", "camera", or "dataset"
+    const [inputMode, setInputMode] = useState("upload");
     const [noImageError, setNoImageError] = useState(false);
     const [noSelectionError, setNoSelectionError] = useState(false);
 
@@ -178,42 +181,70 @@ export default function Sequential({ className }) {
         }
     };
 
+    // Calculate tab indicator position based on inputMode
+    const getTabPosition = () => {
+        switch (inputMode) {
+            case "upload": return "";
+            case "camera": return "translate-x-[calc(100%+theme(space.2))]";
+            case "dataset": return "translate-x-[calc(200%+theme(space.4))]";
+            default: return "";
+        }
+    };
+
     return (
         <div className={`${className} flex flex-col gap-4 pt-10 items-center h-auto`}>
-            <div className="w-1/3 bg-white/10 rounded-md p-2 border-1 gap-2 flex relative">
-                <button className={`${useCamera ?
+            <div className="w-1/2 bg-white/10 rounded-md p-2 border-1 gap-2 flex relative">
+                <button className={`${inputMode !== "upload" ?
                     "hover:border-solid \
                 hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)] transition duration-300"
                     : ""}
-                w-1/2 rounded-md p-3 z-1 border-transparent border-1`}
-                    onClick={() => { setUseCamera(false); setPreview(null); }}>
-                    Select & Upload Image
+                w-1/3 rounded-md p-3 z-1 border-transparent border-1`}
+                    onClick={() => { setInputMode("upload"); setPreview(null); }}>
+                    Upload Image
                 </button>
 
-                <button className={`${!useCamera ?
+                <button className={`${inputMode !== "camera" ?
                     "hover:border-solid \
                 hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)] transition duration-300"
                     : ""}
-                w-1/2 rounded-md p-3 z-1 border-transparent border-1`}
-                    onClick={() => { setUseCamera(true); setPreview(null); }}>Capture Image</button>
+                w-1/3 rounded-md p-3 z-1 border-transparent border-1`}
+                    onClick={() => { setInputMode("camera"); setPreview(null); }}>
+                    Capture Image
+                </button>
+
+                <button className={`${inputMode !== "dataset" ?
+                    "hover:border-solid \
+                hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)] transition duration-300"
+                    : ""}
+                w-1/3 rounded-md p-3 z-1 border-transparent border-1 flex items-center justify-center gap-2`}
+                    onClick={() => { setInputMode("dataset"); setPreview(null); }}>
+                    <IoFolderOpenOutline />
+                    Dataset Images
+                </button>
 
                 <div className={`transition duration-300
-                border-1 border-[var(--color-onyx)] absolute bg-[var(--color-magenta)]/60 h-[calc(100%-theme(space.4))] rounded-md w-[calc(50%-theme(space.4))] ${useCamera ? "translate-x-[calc(100%+theme(space.4))]" : ""
-                    }`}></div>
+                border-1 border-[var(--color-onyx)] absolute bg-[var(--color-magenta)]/60 h-[calc(100%-theme(space.4))] rounded-md w-[calc(33.333%-theme(space.2))] ${getTabPosition()}`}></div>
             </div>
-            {!useCamera ?
+
+            {inputMode === "upload" && (
                 <UploadImage className="h-100 w-100"
                     changeImage={changeImage}
-                    handleUpload={handleUpload}></UploadImage>
-                : <Camera setPreview={setPreview} handleUpload={handleUpload}></Camera>
-            }
-            {(preview && !useCamera) &&
+                    handleUpload={handleUpload} />
+            )}
+            {inputMode === "camera" && (
+                <Camera setPreview={setPreview} handleUpload={handleUpload} />
+            )}
+            {inputMode === "dataset" && (
+                <DatasetImageSelector handleUpload={handleUpload} />
+            )}
+
+            {(preview && inputMode !== "camera") &&
                 <img
                     src={preview}
                     alt="Uploaded"
                     style={{ width: "300px", marginTop: "20px" }}
-                >
-                </img>}
+                />
+            }
 
 
 

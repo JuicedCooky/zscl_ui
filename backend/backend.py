@@ -79,7 +79,7 @@ def load_model(path):
 # Load the first model by default
 loaded_models[model_paths[0]] = load_model(model_paths[0])
 
-classname_path = os.path.join(base_path, "imagenet_classes.txt") 
+classname_path = os.path.join(base_path, "classes/custom_classes.txt") 
 
 with open(classname_path) as f:
     lines = f.readlines()
