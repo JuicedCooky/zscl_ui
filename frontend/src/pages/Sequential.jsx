@@ -7,7 +7,7 @@ import { ProbabilityBar } from "../components/ProbabilityBar";
 import { Camera } from "../components/Camera";
 import { DatasetImageSelector } from "../components/DatasetImageSelector";
 import { IoIosSend } from "react-icons/io";
-import { FaEdit } from "react-icons/fa";
+import { FaEdit, FaPlus, FaTrash } from "react-icons/fa";
 import { IoFolderOpenOutline } from "react-icons/io5";
 
 const SEQUENTIAL_DATASETS = ["Base Model/CLIP", "DTD", "MNIST", "EuroSAT", "Flowers"];
@@ -44,23 +44,20 @@ export default function Sequential({ className }) {
 
     const [currentImageData, setImageData] = useState(null);
 
-    // Sequential dataset selection: index of the selected dataset
-    // -1 means none selected, 0 = Base Model, 1 = DTD, 2 = MNIST, 3 = EuroSAT, 4 = Flowers
-    // Visual display highlights all datasets up to selected to show training sequence
-    const [selectedUpTo, setSelectedUpTo] = useState(-1);
+    // List of selected models: [{ datasetIndex: number, dataset: string, method: string | null }, ...]
+    const [selectedModels, setSelectedModels] = useState([]);
 
-    // Selected training method (null = not selected)
-    const [selectedMethod, setSelectedMethod] = useState(null);
+    // Current selection being configured (before adding to list)
+    const [currentDatasetIndex, setCurrentDatasetIndex] = useState(-1);
+    const [currentMethod, setCurrentMethod] = useState(null);
 
     async function handlePredict() {
         setIsPredicting(true);
         setNoImageError(false);
         setNoSelectionError(false);
-        console.log(preview);
 
-        // Validate selections
-        // Base Model (index 0) doesn't require method selection
-        if (selectedUpTo < 0 || (selectedUpTo > 0 && !selectedMethod)) {
+        // Validate that at least one model is selected
+        if (selectedModels.length === 0) {
             setNoSelectionError(true);
             setIsPredicting(false);
             return;
@@ -68,22 +65,20 @@ export default function Sequential({ className }) {
 
         if (preview != null) {
             if (currentImageData != null) {
-                const resImage = await fetch("http://localhost:8000/upload", {
+                await fetch("http://localhost:8000/upload", {
                     method: "POST",
                     body: currentImageData,
                 });
             }
 
-            // Send dataset and method selection to backend
-            await fetch("http://localhost:8000/setsequentialmodel", {
+            // Send all selected models to backend
+            await fetch("http://localhost:8000/setsequentialmodels", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    datasetIndex: selectedUpTo,
-                    dataset: SEQUENTIAL_DATASETS[selectedUpTo],
-                    method: selectedMethod
+                    models: selectedModels
                 })
             });
 
@@ -159,26 +154,76 @@ export default function Sequential({ className }) {
 
     }, [setPreview]);
 
-    // Handle dataset selection - clicking selects that dataset (visually highlights up to it)
+    // Handle dataset selection for current configuration
     const handleDatasetClick = (index) => {
-        if (selectedUpTo === index) {
-            // Clicking the same dataset deselects it
-            setSelectedUpTo(-1);
-            setSelectedMethod(null);
+        if (currentDatasetIndex === index) {
+            setCurrentDatasetIndex(-1);
+            setCurrentMethod(null);
         } else {
-            // Clicking a dataset selects it
-            setSelectedUpTo(index);
-            setSelectedMethod(null); // Reset method when changing dataset
+            setCurrentDatasetIndex(index);
+            setCurrentMethod(null);
         }
     };
 
-    // Handle method selection
+    // Handle method selection for current configuration
     const handleMethodClick = (methodId) => {
-        if (selectedMethod === methodId) {
-            setSelectedMethod(null);
+        if (currentMethod === methodId) {
+            setCurrentMethod(null);
         } else {
-            setSelectedMethod(methodId);
+            setCurrentMethod(methodId);
         }
+    };
+
+    // Add current selection to the list of models
+    const handleAddModel = () => {
+        if (currentDatasetIndex < 0) return;
+
+        // Base model doesn't need method
+        if (currentDatasetIndex === 0) {
+            const newModel = {
+                datasetIndex: currentDatasetIndex,
+                dataset: SEQUENTIAL_DATASETS[currentDatasetIndex],
+                method: null
+            };
+            // Check for duplicates
+            const isDuplicate = selectedModels.some(
+                m => m.datasetIndex === newModel.datasetIndex
+            );
+            if (!isDuplicate) {
+                setSelectedModels([...selectedModels, newModel]);
+            }
+        } else if (currentMethod) {
+            const newModel = {
+                datasetIndex: currentDatasetIndex,
+                dataset: SEQUENTIAL_DATASETS[currentDatasetIndex],
+                method: currentMethod
+            };
+            // Check for duplicates
+            const isDuplicate = selectedModels.some(
+                m => m.datasetIndex === newModel.datasetIndex && m.method === newModel.method
+            );
+            if (!isDuplicate) {
+                setSelectedModels([...selectedModels, newModel]);
+            }
+        }
+
+        // Reset current selection
+        setCurrentDatasetIndex(-1);
+        setCurrentMethod(null);
+    };
+
+    // Remove a model from the list
+    const handleRemoveModel = (index) => {
+        setSelectedModels(selectedModels.filter((_, i) => i !== index));
+    };
+
+    // Get display name for a model configuration
+    const getModelDisplayName = (model) => {
+        if (model.datasetIndex === 0) {
+            return "Base CLIP";
+        }
+        const methodLabel = TRAINING_METHODS.find(m => m.id === model.method)?.label || model.method;
+        return `${model.dataset} (${methodLabel})`;
     };
 
     // Calculate tab indicator position based on inputMode
@@ -259,16 +304,40 @@ export default function Sequential({ className }) {
             </div>
 
             <hr className="w-9/10 border-[var(--color-honeydew)]/50"></hr>
+
+            {/* Selected Models List */}
+            {selectedModels.length > 0 && (
+                <div className="w-8/10 gap-y-2 flex flex-col">
+                    <span className="text-lg">Selected Models ({selectedModels.length}):</span>
+                    <div className="flex gap-2 flex-wrap">
+                        {selectedModels.map((model, index) => (
+                            <div
+                                key={`${model.datasetIndex}-${model.method}-${index}`}
+                                className="btn flex items-center gap-2"
+                            >
+                                <span>{getModelDisplayName(model)}</span>
+                                <button
+                                    onClick={() => handleRemoveModel(index)}
+                                    className="text-red-400 hover:text-red-300 ml-1"
+                                >
+                                    <FaTrash size={12} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="gap-y-4 flex flex-col">
                 <span>1. Choose Dataset (Sequential Training)</span>
                 <p className="text-sm text-[var(--color-honeydew)]/70">
-                    Each model is trained sequentially on datasets before it
+                    Select a dataset, then add it to compare multiple models
                 </p>
                 <div className="flex gap-2 flex-wrap">
                     {SEQUENTIAL_DATASETS.map((dataset, index) => (
                         <button
                             key={dataset}
-                            className={`btn ${index <= selectedUpTo ? "" : "bg-transparent hover:bg-gray-600/50"}`}
+                            className={`btn ${currentDatasetIndex === index ? "" : "bg-transparent hover:bg-gray-600/50"}`}
                             onClick={() => handleDatasetClick(index)}
                         >
                             {dataset}
@@ -277,7 +346,7 @@ export default function Sequential({ className }) {
                 </div>
             </div>
 
-            {selectedUpTo > 0 && (
+            {currentDatasetIndex > 0 && (
                 <div className="gap-y-4 flex flex-col">
                     <span>2. Choose Training Method</span>
                     <p className="text-sm text-[var(--color-honeydew)]/70">
@@ -287,13 +356,21 @@ export default function Sequential({ className }) {
                         {TRAINING_METHODS.map((method) => (
                             <button
                                 key={method.id}
-                                className={`btn ${selectedMethod === method.id ? "" : "bg-transparent hover:bg-gray-600/50"}`}
+                                className={`btn ${currentMethod === method.id ? "" : "bg-transparent hover:bg-gray-600/50"}`}
                                 onClick={() => handleMethodClick(method.id)}
                             >
                                 {method.label}
                             </button>
                         ))}
                     </div>
+                </div>
+            )}
+
+            {/* Add Model Button */}
+            {(currentDatasetIndex === 0 || (currentDatasetIndex > 0 && currentMethod)) && (
+                <div className="btn gap-4 px-4 flex items-center justify-between bg-green-700/50 hover:bg-green-600/50">
+                    <FaPlus className="text-[var(--color-honeydew)]" />
+                    <button onClick={handleAddModel}>Add Model to Compare</button>
                 </div>
             )}
             <div className="btn gap-4 px-4 flex items-center justify-between">
@@ -319,29 +396,45 @@ export default function Sequential({ className }) {
                     }
                 </select>
             </div>
-            <div className="border-2 p-5 rounded-md w-8/10">
+            <div className="border-2 p-5 rounded-md w-8/10 min-h-[200px]">
                 {isPredicting &&
                     <LoadingSpinner />
                 }
-                {results && !results.error &&
-                    <div className="flex flex-row gap-6">
-                        {Object.entries(results).map(([modelName, modelResults]) => (
-                            <div key={modelName} className="flex flex-col gap-2 flex-1">
-                                <span className="text-xl font-semibold border-b border-[var(--color-honeydew)]/30 pb-2">
-                                    {modelName}
-                                </span>
-                                <div>
-                                    {((limitProbabilities === "all")
-                                        ? Object.entries(modelResults)
-                                        : Object.entries(modelResults).slice(0, Number(limitProbabilities)))
-                                        .map(([label, prob]) => (
-                                            <ProbabilityBar key={`${modelName}-${label}`} label={label} prob={prob}></ProbabilityBar>
-                                        ))}
+                {results && !results.error && Object.keys(results).length > 0 && (
+                    <>
+                        <div className="flex gap-2 mb-4 text-sm text-[var(--color-honeydew)]/70">
+                            <span>Comparing {Object.keys(results).length} model{Object.keys(results).length > 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="flex flex-row gap-6 overflow-x-auto pb-4">
+                            {Object.entries(results).map(([modelName, modelResults], index) => (
+                                <div
+                                    key={modelName}
+                                    className="flex flex-col gap-2 min-w-[280px] flex-1 bg-white/5 rounded-lg p-4"
+                                >
+                                    <div className="flex items-center gap-2 border-b border-[var(--color-honeydew)]/30 pb-2">
+                                        <span className="bg-[var(--color-magenta)]/60 text-xs px-2 py-1 rounded">
+                                            #{index + 1}
+                                        </span>
+                                        <span className="text-lg font-semibold truncate" title={modelName}>
+                                            {modelName}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        {((limitProbabilities === "all")
+                                            ? Object.entries(modelResults)
+                                            : Object.entries(modelResults).slice(0, Number(limitProbabilities)))
+                                            .map(([label, prob]) => (
+                                                <ProbabilityBar key={`${modelName}-${label}`} label={label} prob={prob}></ProbabilityBar>
+                                            ))}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                }
+                            ))}
+                        </div>
+                    </>
+                )}
+                {results && !results.error && Object.keys(results).length === 0 && (
+                    <span className="text-[var(--color-honeydew)]/50">No results to display</span>
+                )}
                 {results?.error &&
                     <span className="text-red-700">{results.error}</span>
                 }
@@ -349,7 +442,7 @@ export default function Sequential({ className }) {
                     <span className="text-red-700">ERROR, NO IMAGE SELECTED</span>
                 }
                 {noSelectionError &&
-                    <span className="text-red-700">ERROR, SELECT A DATASET{selectedUpTo > 0 ? " AND TRAINING METHOD" : ""}</span>
+                    <span className="text-red-700">ERROR, ADD AT LEAST ONE MODEL TO COMPARE</span>
                 }
             </div>
             {showClasses &&

@@ -60,8 +60,10 @@ METHOD_FOLDERS = {
 # Dataset names as they appear in model filenames (lowercase)
 DATASET_NAMES = ["base", "dtd", "mnist", "eurosat", "flowers"]
 
-# Current sequential model selection
-sequential_model_path = None
+# Current sequential model selections (list of model paths)
+sequential_model_paths = []
+# Whether to include base CLIP in predictions
+include_base_clip = False
 
 # Load base CLIP components
 _, _, pre_process = clip.load("ViT-B/16", device=device, jit=False)
@@ -232,76 +234,88 @@ def setActiveModels(data: list = Body(...)):
     return {"status": "ok", "active": active_models}
 
 
-# Flag to indicate if base CLIP should be used
-use_base_clip = False
-
-@app.post("/setsequentialmodel")
-def setSequentialModel(data: dict = Body(...)):
+@app.post("/setsequentialmodels")
+def setSequentialModels(data: dict = Body(...)):
     """
-    Set the sequential model based on dataset and training method selection.
-    Receives: { datasetIndex: int, dataset: str, method: str }
+    Set multiple sequential models based on dataset and training method selections.
+    Receives: { models: [{ datasetIndex: int, dataset: str, method: str }, ...] }
     """
-    global sequential_model_path, loaded_models, use_base_clip
+    global sequential_model_paths, loaded_models, include_base_clip
 
-    dataset_index = data.get("datasetIndex", -1)
-    dataset = data.get("dataset", "").lower().replace(" ", "")
-    method = data.get("method")
+    models_config = data.get("models", [])
 
-    # Reset flags
-    use_base_clip = False
-    sequential_model_path = None
+    # Reset
+    sequential_model_paths = []
+    include_base_clip = False
 
-    if dataset_index < 0:
-        return {"error": "No dataset selected"}
+    if not models_config:
+        return {"error": "No models specified"}
 
-    # For base model, use the original CLIP model (no fine-tuning)
-    # No method selection needed for base model
-    if dataset_index == 0 or dataset == "basemodel":
-        use_base_clip = True
-        return {"status": "ok", "model": "Base CLIP (ViT-B/16)"}
+    loaded_model_names = []
 
-    # For other datasets, method must be selected
-    if not method:
-        return {"error": "No training method selected"}
+    for config in models_config:
+        dataset_index = config.get("datasetIndex", -1)
+        dataset = config.get("dataset", "").lower().replace(" ", "").replace("/", "")
+        method = config.get("method")
 
-    if method not in METHOD_FOLDERS:
-        return {"error": f"Unknown method: {method}"}
+        if dataset_index < 0:
+            continue
 
-    # Construct model path: models/{method}/{dataset}.pth
-    method_folder = METHOD_FOLDERS[method]
-    models_dir = os.path.join(base_path, "models", method_folder)
+        # For base model, use the original CLIP model (no fine-tuning)
+        if dataset_index == 0 or dataset == "basemodelclip":
+            include_base_clip = True
+            loaded_model_names.append("Base CLIP (ViT-B/16)")
+            continue
 
-    # Find the model file for this dataset
-    dataset_name = DATASET_NAMES[dataset_index].lower()
+        # For other datasets, method must be selected
+        if not method:
+            return {"error": f"No training method selected for {config.get('dataset', 'unknown')}"}
 
-    # Look for model files matching the dataset name
-    model_file = None
-    if os.path.exists(models_dir):
-        for filename in os.listdir(models_dir):
-            if filename.endswith(".pth") and dataset_name in filename.lower():
-                model_file = filename
-                break
+        if method not in METHOD_FOLDERS:
+            return {"error": f"Unknown method: {method}"}
 
-    if not model_file:
-        return {"error": f"Model not found for {dataset} with method {method}"}
+        # Construct model path: models/{method}/{dataset}.pth
+        method_folder = METHOD_FOLDERS[method]
+        models_dir = os.path.join(base_path, "models", method_folder)
 
-    model_path = os.path.join(models_dir, model_file)
-    sequential_model_path = model_path
+        # Find the model file for this dataset
+        dataset_name = DATASET_NAMES[dataset_index].lower()
 
-    # Load the model if not already loaded
-    if model_path not in loaded_models:
-        try:
-            loaded_models[model_path] = load_model(model_path)
-        except Exception as e:
-            return {"error": f"Failed to load model: {str(e)}"}
+        # Look for model files matching the dataset name
+        model_file = None
+        if os.path.exists(models_dir):
+            for filename in os.listdir(models_dir):
+                if filename.endswith(".pth") and dataset_name in filename.lower():
+                    model_file = filename
+                    break
 
-    return {"status": "ok", "model": model_file}
+        if not model_file:
+            return {"error": f"Model not found for {config.get('dataset', 'unknown')} with method {method}"}
+
+        model_path = os.path.join(models_dir, model_file)
+
+        # Avoid duplicates
+        if model_path not in sequential_model_paths:
+            sequential_model_paths.append(model_path)
+
+            # Load the model if not already loaded
+            if model_path not in loaded_models:
+                try:
+                    loaded_models[model_path] = load_model(model_path)
+                except Exception as e:
+                    return {"error": f"Failed to load model: {str(e)}"}
+
+            # Include method folder in model name to distinguish same dataset with different methods
+            display_name = f"{method_folder}/{model_file}"
+            loaded_model_names.append(display_name)
+
+    return {"status": "ok", "models": loaded_model_names}
 
 
 @app.get("/predictsequential")
 def predictSequential():
-    """Predict using the sequential model selection"""
-    global uploaded_image, class_names, prompt_pre, prompt_suf, sequential_model_path, loaded_models, use_base_clip
+    """Predict using multiple sequential model selections"""
+    global uploaded_image, class_names, prompt_pre, prompt_suf, sequential_model_paths, loaded_models, include_base_clip
 
     if prompt_pre.endswith(" "):
         prompt_pre = prompt_pre[:-1]
@@ -311,32 +325,47 @@ def predictSequential():
     if uploaded_image is None:
         return {"error": "No image uploaded yet"}
 
-    # Check if a model has been selected
-    if not use_base_clip and sequential_model_path is None:
-        return {"error": "No model selected"}
+    # Check if any models have been selected
+    if not include_base_clip and not sequential_model_paths:
+        return {"error": "No models selected"}
 
     try:
         image = pre_process(uploaded_image).unsqueeze(0).to(device)
         text = clip.tokenize(prompts).to(device)
 
-        # Use base CLIP if explicitly selected
-        if use_base_clip:
-            model, _, _ = clip.load("ViT-B/16", device=device, jit=False)
-            model_name = "Base CLIP"
-        else:
-            if sequential_model_path not in loaded_models:
-                return {"error": "Model not loaded"}
-            model = loaded_models[sequential_model_path]
-            model_name = os.path.basename(sequential_model_path)
+        all_results = {}
 
-        with torch.no_grad():
-            logits_per_image, _ = model(image, text)
-            probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+        # Include base CLIP if selected
+        if include_base_clip:
+            base_model, _, _ = clip.load("ViT-B/16", device=device, jit=False)
+            with torch.no_grad():
+                logits_per_image, _ = base_model(image, text)
+                probs = logits_per_image.softmax(dim=-1).cpu().numpy()
 
-        result = dict(zip(prompts, probs.tolist()[0]))
-        result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
+            result = dict(zip(prompts, probs.tolist()[0]))
+            result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
+            all_results["Base CLIP"] = result
 
-        return {model_name: result}
+        # Predict with each selected model
+        for model_path in sequential_model_paths:
+            if model_path not in loaded_models:
+                continue
+
+            model = loaded_models[model_path]
+            # Include method folder in model name to distinguish same dataset with different methods
+            model_file = os.path.basename(model_path)
+            method_folder = os.path.basename(os.path.dirname(model_path))
+            model_name = f"{method_folder}/{model_file}"
+
+            with torch.no_grad():
+                logits_per_image, _ = model(image, text)
+                probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+
+            result = dict(zip(prompts, probs.tolist()[0]))
+            result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
+            all_results[model_name] = result
+
+        return all_results
 
     except Exception as e:
         print("Error:", e)
