@@ -1,4 +1,5 @@
 __pycache__/
-backend/models/*
+backend/models/*.pth
+backend/models/**/*.pth
 backend/__pycache__/
 .claude/
