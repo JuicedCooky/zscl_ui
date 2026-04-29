@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 // Raw CSV imports
 import atd_finetune  from "../assets/results/accuracies_trained_datasets/finetune.csv?raw";
@@ -176,6 +176,71 @@ function HeatmapCard({ method, data }) {
     );
 }
 
+// ── Zoom / pan hook ───────────────────────────────────────────────────
+function useZoomPan(initW, initH) {
+    const [vb, setVb]  = useState({ x: 0, y: 0, w: initW, h: initH });
+    const vbRef        = useRef({ x: 0, y: 0, w: initW, h: initH });
+    const wrapRef      = useRef(null);
+    const dragging     = useRef(false);
+    const lastPos      = useRef({ x: 0, y: 0 });
+
+    // Wheel listener must be non-passive to call preventDefault
+    useEffect(() => {
+        const el = wrapRef.current;
+        if (!el) return;
+        const handler = e => {
+            e.preventDefault();
+            e.stopPropagation();
+            const rect  = el.getBoundingClientRect();
+            const cur   = vbRef.current;
+            const mx    = (e.clientX - rect.left) / rect.width  * cur.w + cur.x;
+            const my    = (e.clientY - rect.top)  / rect.height * cur.h + cur.y;
+            const scale = e.deltaY < 0 ? 0.8 : 1 / 0.8;
+            const next  = {
+                x: mx - (mx - cur.x) * scale,
+                y: my - (my - cur.y) * scale,
+                w: cur.w * scale,
+                h: cur.h * scale,
+            };
+            vbRef.current = next;
+            setVb(next);
+        };
+        el.addEventListener("wheel", handler, { passive: false });
+        return () => el.removeEventListener("wheel", handler);
+    }, []);
+
+    const onMouseDown = e => {
+        dragging.current = true;
+        lastPos.current  = { x: e.clientX, y: e.clientY };
+        e.currentTarget.style.cursor = "grabbing";
+    };
+
+    const onMouseMove = e => {
+        if (!dragging.current) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const cur  = vbRef.current;
+        const dx   = (e.clientX - lastPos.current.x) / rect.width  * cur.w;
+        const dy   = (e.clientY - lastPos.current.y) / rect.height * cur.h;
+        lastPos.current = { x: e.clientX, y: e.clientY };
+        const next = { ...cur, x: cur.x - dx, y: cur.y - dy };
+        vbRef.current = next;
+        setVb(next);
+    };
+
+    const stopDrag = e => {
+        dragging.current = false;
+        if (e?.currentTarget) e.currentTarget.style.cursor = "grab";
+    };
+
+    const reset = () => {
+        const next = { x: 0, y: 0, w: initW, h: initH };
+        vbRef.current = next;
+        setVb(next);
+    };
+
+    return { wrapRef, vb, onMouseDown, onMouseMove, stopDrag, reset };
+}
+
 // ── Transfer chart ────────────────────────────────────────────────────
 const MAIN_DATASETS = ["dtd", "mnist", "eurosat", "flowers"];
 const W = 550, H = 250, PL = 52, PR = 20, PT = 16, PB = 36;
@@ -191,6 +256,7 @@ const SEP_X = PL + 0.80 * cW; // dashed separator before average
 
 function TransferChart({ data, activeMethods }) {
     const [chartType, setChartType] = useState("bar");
+    const { wrapRef, vb, onMouseDown, onMouseMove, stopDrag, reset } = useZoomPan(W, H);
     if (activeMethods.length === 0) return null;
 
     const allDatasets = [...MAIN_DATASETS, "average"];
@@ -208,7 +274,11 @@ function TransferChart({ data, activeMethods }) {
 
     return (
         <div className="flex flex-col gap-3 w-full">
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+                <button onClick={reset}
+                    className="px-3 py-1.5 text-xs rounded-md border border-[var(--color-honeydew)]/20 bg-white/10 text-[var(--color-honeydew)]/60 hover:bg-white/20 transition duration-300">
+                    Reset
+                </button>
                 <div className="flex bg-white/10 rounded-md p-1 gap-1">
                     {["bar", "line"].map(t => (
                         <button key={t} onClick={() => setChartType(t)}
@@ -218,22 +288,33 @@ function TransferChart({ data, activeMethods }) {
                     ))}
                 </div>
             </div>
+            <p className="text-xs text-[var(--color-honeydew)]/25 text-center -mt-1">
+                scroll to zoom · drag to pan
+            </p>
 
-            <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ height: H }}>
+            <div ref={wrapRef}
+                style={{ cursor: "grab", userSelect: "none" }}
+                onMouseDown={onMouseDown} onMouseMove={onMouseMove}
+                onMouseUp={stopDrag} onMouseLeave={stopDrag}>
+            <svg width="100%" viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+                style={{ height: H, display: "block", pointerEvents: "none" }}>
                 {/* Y grid + labels */}
                 {yTicks.map(val => {
                     const y = toY(val);
                     return (
                         <g key={val}>
                             <line x1={PL} y1={y} x2={W - PR} y2={y}
-                                stroke={val === 0 ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.07)"}
-                                strokeWidth={val === 0 ? 1.5 : 1} />
+                                stroke="rgba(255,255,255,0.07)" strokeWidth="1" />
                             <text x={PL - 5} y={y + 4} textAnchor="end" fill="rgb(156,163,175)" fontSize="10">
                                 {val.toFixed(1)}%
                             </text>
                         </g>
                     );
                 })}
+
+                {/* Zero baseline — always visible */}
+                <line x1={PL} y1={toY(0)} x2={W - PR} y2={toY(0)}
+                    stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" strokeDasharray="5,4" />
 
                 {/* Dashed separator before average */}
                 <line x1={SEP_X} y1={PT} x2={SEP_X} y2={PT + cH}
@@ -308,6 +389,7 @@ function TransferChart({ data, activeMethods }) {
                     </>
                 )}
             </svg>
+            </div>
 
             <div className="flex gap-4 flex-wrap justify-center">
                 {activeMethods.map(m => (
