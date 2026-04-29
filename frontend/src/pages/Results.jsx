@@ -1,380 +1,385 @@
 import React, { useState } from "react";
-import results from "../assets/results/results.json";
 
-const MODELS = [
-    { name: "Zero Shot Continual Learning Model (ZSCL)", key: "zscl_freeze" },
-    { name: "Finetune Only Model", key: "pure_finetune" }
-];
+// Raw CSV imports
+import atd_finetune  from "../assets/results/accuracies_trained_datasets/finetune.csv?raw";
+import atd_lora      from "../assets/results/accuracies_trained_datasets/lora.csv?raw";
+import atd_ogd       from "../assets/results/accuracies_trained_datasets/ogd.csv?raw";
+import atd_sfao      from "../assets/results/accuracies_trained_datasets/sfao.csv?raw";
+import atd_sharelora from "../assets/results/accuracies_trained_datasets/sharelora.csv?raw";
+import atd_zscl      from "../assets/results/accuracies_trained_datasets/zscl.csv?raw";
 
-const MODEL_NAMES = MODELS.map(m => m.name);
+import bt_finetune   from "../assets/results/backward_transfer/finetune.csv?raw";
+import bt_lora       from "../assets/results/backward_transfer/lora.csv?raw";
+import bt_ogd        from "../assets/results/backward_transfer/ogd.csv?raw";
+import bt_sfao       from "../assets/results/backward_transfer/sfao.csv?raw";
+import bt_sharelora  from "../assets/results/backward_transfer/sharelora.csv?raw";
+import bt_zscl       from "../assets/results/backward_transfer/zscl.csv?raw";
 
-const ROW_LABELS = [
-    { key: "accuracy", label: "Accuracy" },
-    { key: "average_change", label: "Average Change" },
-    { key: "average_change_trained_datasets", label: "Average Change (On trained datasets)" },
-    { key: "average_change_untrained_datasets", label: "Average Change (On untrained datasets)" },
-];
+import ft_finetune   from "../assets/results/forward_transfer/finetune.csv?raw";
+import ft_lora       from "../assets/results/forward_transfer/lora.csv?raw";
+import ft_ogd        from "../assets/results/forward_transfer/ogd.csv?raw";
+import ft_sfao       from "../assets/results/forward_transfer/sfao.csv?raw";
+import ft_sharelora  from "../assets/results/forward_transfer/sharelora.csv?raw";
+import ft_zscl       from "../assets/results/forward_transfer/zscl.csv?raw";
 
-// Chart data options - maps to array keys in results.json
-const CHART_OPTIONS = [
-    { key: "running_accuracy", label: "Running Accuracy" },
-    { key: "transfer_scores", label: "Transfer Scores" },
-];
+// ── Constants ─────────────────────────────────────────────────────────
+const METHODS = ["finetune", "lora", "ogd", "sfao", "sharelora", "zscl"];
 
-// X-axis labels for each chart option
-const CHART_LABELS = {
-    running_accuracy: ["version-0 ()", "version-1 (DTD)", "version-2 (DTD,MNIST)", "version-3 (DTD,MNIST,EuroSAT)", "version-4 (DTD,MNIST,EuroSAT,Flowers)"],
-    transfer_scores: ["DTD", "MNIST", "EuroSAT", "Flowers"],
+const METHOD_COLORS = {
+    finetune:  "#FF6B6B",
+    lora:      "#4ECDC4",
+    ogd:       "#45B7D1",
+    sfao:      "#FFEAA7",
+    sharelora: "#DDA0DD",
+    zscl:      "#82E0AA",
 };
 
-// Colors for each model
-const MODEL_COLORS = {
-    "Zero Shot Continual Learning Model (ZSCL)": "var(--color-magenta)",
-    "Finetune Only Model": "var(--color-honeydew)",
+const COL_SHORT = {
+    base:                        "Base",
+    DTD:                         "DTD",
+    "DTD-MNIST":                 "+MNIST",
+    "DTD-MNIST-EuroSAT":         "+EuroSAT",
+    "DTD-MNIST-EuroSAT-Flowers": "+Flowers",
 };
 
-export default function Results({ className }) {
-    const [selectedModels, setSelectedModels] = useState([true, false]);
-    const [chartType, setChartType] = useState("bar"); // "bar" or "line"
-    const [selectedChartData, setSelectedChartData] = useState("running_accuracy");
-    const [useMaxScale, setUseMaxScale] = useState(false);
+// ── Parsers ───────────────────────────────────────────────────────────
+function parseATD(raw) {
+    const lines = raw.trim().split("\n");
+    const headers = lines[0].split(",").slice(1).map(h => h.trim());
+    const rows = lines.slice(1).map(line => {
+        const [dataset, ...rest] = line.split(",");
+        return { dataset: dataset.trim(), values: rest.map(v => parseFloat(v.trim())) };
+    });
+    return { headers, rows };
+}
 
-    const toggleModel = (index) => {
-        setSelectedModels(prev => {
-            const newArray = [...prev];
-            newArray[index] = !newArray[index];
-            return newArray;
-        });
-    };
+function parseTransfer(raw) {
+    return raw.trim().split("\n").slice(1).map(line => {
+        const [dataset, value] = line.split(",");
+        return { dataset: dataset.trim(), value: parseFloat(value.trim()) };
+    });
+}
 
-    const activeModels = MODEL_NAMES.filter((_, idx) => selectedModels[idx]);
+// ── Static data ───────────────────────────────────────────────────────
+const ATD = {
+    finetune:  parseATD(atd_finetune),
+    lora:      parseATD(atd_lora),
+    ogd:       parseATD(atd_ogd),
+    sfao:      parseATD(atd_sfao),
+    sharelora: parseATD(atd_sharelora),
+    zscl:      parseATD(atd_zscl),
+};
 
-    // Generate chart data dynamically from results.json
-    const chartData = {
-        labels: CHART_LABELS[selectedChartData] || [],
-        datasets: MODELS.map(model => ({
-            name: model.name,
-            values: results[model.key]?.[selectedChartData] || [],
-            color: MODEL_COLORS[model.name],
-        })),
-    };
+const BT = {
+    finetune:  parseTransfer(bt_finetune),
+    lora:      parseTransfer(bt_lora),
+    ogd:       parseTransfer(bt_ogd),
+    sfao:      parseTransfer(bt_sfao),
+    sharelora: parseTransfer(bt_sharelora),
+    zscl:      parseTransfer(bt_zscl),
+};
 
-    // Calculate max value across all active models for dynamic scaling
-    const activeDataValues = chartData.datasets
-        .filter(dataset => activeModels.includes(dataset.name))
-        .flatMap(dataset => dataset.values);
-    const maxDataValue = activeDataValues.length > 0 ? Math.max(...activeDataValues) : 100;
-    const yAxisMax = useMaxScale ? Math.ceil(maxDataValue * 1.1) : 100; // Add 10% padding when using max scale
+const FT = {
+    finetune:  parseTransfer(ft_finetune),
+    lora:      parseTransfer(ft_lora),
+    ogd:       parseTransfer(ft_ogd),
+    sfao:      parseTransfer(ft_sfao),
+    sharelora: parseTransfer(ft_sharelora),
+    zscl:      parseTransfer(ft_zscl),
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function heatColor(value) {
+    const t = Math.max(0, Math.min(1, value / 100));
+    const r = t < 0.5 ? 210 : Math.round((1 - (t - 0.5) * 2) * 210);
+    const g = t < 0.5 ? Math.round(t * 2 * 165) : 165;
+    return `rgb(${r},${g},20)`;
+}
+
+function SectionDivider({ label }) {
+    return (
+        <div className="flex items-center gap-3 w-full">
+            <div className="h-px flex-1 bg-[var(--color-honeydew)]/20" />
+            <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/40">{label}</span>
+            <div className="h-px flex-1 bg-[var(--color-honeydew)]/20" />
+        </div>
+    );
+}
+
+// ── Heatmap card ──────────────────────────────────────────────────────
+function HeatmapCard({ method, data }) {
+    const { headers, rows } = data;
+    const dataRows = rows.filter(r => r.dataset !== "average");
+    const avgRow   = rows.find(r => r.dataset === "average");
 
     return (
-        <div className={`${className} flex flex-col gap-4 pt-10 items-center h-auto`}>
-            <h1 className="text-3xl font-bold">Model Comparison</h1>
+        <div className="flex flex-col items-center gap-2">
+            <span className="text-sm font-semibold capitalize" style={{ color: METHOD_COLORS[method] }}>
+                {method}
+            </span>
+            <table className="border-collapse text-xs">
+                <thead>
+                    <tr>
+                        <th />
+                        {headers.map(h => (
+                            <th key={h} className="px-1.5 pb-1.5 text-center text-[var(--color-honeydew)]/50 font-medium whitespace-nowrap">
+                                {COL_SHORT[h] ?? h}
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {dataRows.map(row => (
+                        <tr key={row.dataset}>
+                            <td className="pr-2 text-right text-[var(--color-honeydew)]/60 font-medium uppercase">
+                                {row.dataset}
+                            </td>
+                            {row.values.map((val, i) => (
+                                <td
+                                    key={i}
+                                    title={`${val}%`}
+                                    className="border border-black/25 text-center font-mono"
+                                    style={{
+                                        backgroundColor: heatColor(val),
+                                        color: val > 45 ? "rgba(0,0,0,0.85)" : "rgba(255,255,255,0.9)",
+                                        minWidth: 52,
+                                        padding: "4px 3px",
+                                    }}
+                                >
+                                    {val.toFixed(1)}
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                    {avgRow && (
+                        <tr className="opacity-70 border-t border-[var(--color-honeydew)]/20">
+                            <td className="pr-2 text-right text-[var(--color-honeydew)]/40 italic">avg</td>
+                            {avgRow.values.map((val, i) => (
+                                <td
+                                    key={i}
+                                    title={`${val}%`}
+                                    className="border border-black/25 text-center font-mono"
+                                    style={{
+                                        backgroundColor: heatColor(val),
+                                        color: val > 45 ? "rgba(0,0,0,0.85)" : "rgba(255,255,255,0.9)",
+                                        padding: "3px 3px",
+                                    }}
+                                >
+                                    {val.toFixed(1)}
+                                </td>
+                            ))}
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    );
+}
 
-            {/* Model Selection Tabs */}
-            <div className="w-2/3 bg-white/10 rounded-md p-2 border-1 gap-2 flex relative">
-                {MODEL_NAMES.map((name, idx) => (
-                    <button
-                        key={idx}
-                        className={`flex-1 rounded-md p-3 z-1 border-1 transition duration-300 ${
-                            selectedModels[idx]
-                                ? "bg-[var(--color-magenta)]/60 border-[var(--color-onyx)]"
-                                : "bg-transparent border-transparent hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)]"
-                        }`}
-                        onClick={() => toggleModel(idx)}
-                    >
-                        {name}
+// ── Transfer chart ────────────────────────────────────────────────────
+const MAIN_DATASETS = ["dtd", "mnist", "eurosat", "flowers"];
+const W = 550, H = 250, PL = 52, PR = 20, PT = 16, PB = 36;
+const cW = W - PL - PR, cH = H - PT - PB;
+
+// X positions: main datasets evenly across 8%-72%, average at 88%
+function datasetX(idx) {
+    return idx < 4
+        ? PL + (0.08 + idx * (0.64 / 3)) * cW
+        : PL + 0.88 * cW;
+}
+const SEP_X = PL + 0.80 * cW; // dashed separator before average
+
+function TransferChart({ data, activeMethods }) {
+    const [chartType, setChartType] = useState("bar");
+    if (activeMethods.length === 0) return null;
+
+    const allDatasets = [...MAIN_DATASETS, "average"];
+    const allVals = activeMethods.flatMap(m =>
+        allDatasets.map(d => data[m]?.find(r => r.dataset === d)?.value ?? 0)
+    );
+    const rawMin  = Math.min(...allVals, 0);
+    const rawMax  = Math.max(...allVals, 0);
+    const padding = Math.max((rawMax - rawMin) * 0.12, 3);
+    const yMin    = rawMin - padding;
+    const yMax    = rawMax + padding;
+    const yRange  = yMax - yMin;
+    const toY     = v => PT + (1 - (v - yMin) / yRange) * cH;
+    const yTicks  = [0, 0.25, 0.5, 0.75, 1].map(f => yMin + f * yRange);
+
+    return (
+        <div className="flex flex-col gap-3 w-full">
+            <div className="flex justify-end">
+                <div className="flex bg-white/10 rounded-md p-1 gap-1">
+                    {["bar", "line"].map(t => (
+                        <button key={t} onClick={() => setChartType(t)}
+                            className={`px-3 py-1.5 text-xs rounded capitalize transition duration-300 ${
+                                chartType === t ? "bg-[var(--color-magenta)]/60" : "hover:bg-white/10"
+                            }`}>{t}</button>
+                    ))}
+                </div>
+            </div>
+
+            <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ height: H }}>
+                {/* Y grid + labels */}
+                {yTicks.map(val => {
+                    const y = toY(val);
+                    return (
+                        <g key={val}>
+                            <line x1={PL} y1={y} x2={W - PR} y2={y}
+                                stroke={val === 0 ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.07)"}
+                                strokeWidth={val === 0 ? 1.5 : 1} />
+                            <text x={PL - 5} y={y + 4} textAnchor="end" fill="rgb(156,163,175)" fontSize="10">
+                                {val.toFixed(1)}%
+                            </text>
+                        </g>
+                    );
+                })}
+
+                {/* Dashed separator before average */}
+                <line x1={SEP_X} y1={PT} x2={SEP_X} y2={PT + cH}
+                    stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="4,3" />
+
+                {chartType === "bar" ? (() => {
+                    const n   = activeMethods.length;
+                    const bw  = Math.min(22, 44 / n);
+                    return allDatasets.map((dataset, di) => {
+                        const cx     = datasetX(di);
+                        const isAvg  = di === 4;
+                        const totalW = bw * n;
+                        return (
+                            <g key={dataset}>
+                                {activeMethods.map((m, mi) => {
+                                    const val = data[m]?.find(r => r.dataset === dataset)?.value ?? 0;
+                                    const top = toY(Math.max(val, 0));
+                                    const bot = toY(Math.min(val, 0));
+                                    return (
+                                        <g key={m}>
+                                            <rect x={cx - totalW / 2 + mi * bw} y={top}
+                                                width={bw - 1.5} height={Math.max(bot - top, 1)}
+                                                fill={METHOD_COLORS[m]} opacity={isAvg ? 0.45 : 0.85} rx={1.5} />
+                                            <title>{`${m}: ${val.toFixed(2)}%`}</title>
+                                        </g>
+                                    );
+                                })}
+                                <text x={cx} y={H - 8} textAnchor="middle" fontSize="11"
+                                    fill={isAvg ? "rgba(156,163,175,0.45)" : "rgb(156,163,175)"}
+                                    fontStyle={isAvg ? "italic" : "normal"}>
+                                    {isAvg ? "avg" : dataset.toUpperCase()}
+                                </text>
+                            </g>
+                        );
+                    });
+                })() : (
+                    <>
+                        {activeMethods.map(m => {
+                            const mainPts = MAIN_DATASETS.map((d, i) => {
+                                const val = data[m]?.find(r => r.dataset === d)?.value ?? 0;
+                                return [datasetX(i), toY(val), val];
+                            });
+                            const avgVal = data[m]?.find(r => r.dataset === "average")?.value ?? 0;
+                            const [ax, ay] = [datasetX(4), toY(avgVal)];
+                            return (
+                                <g key={m}>
+                                    <polyline
+                                        points={mainPts.map(([x, y]) => `${x},${y}`).join(" ")}
+                                        fill="none" stroke={METHOD_COLORS[m]}
+                                        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    {mainPts.map(([x, y, val], i) => (
+                                        <g key={i}>
+                                            <circle cx={x} cy={y} r="5" fill={METHOD_COLORS[m]} />
+                                            <title>{`${m} – ${MAIN_DATASETS[i]}: ${val.toFixed(2)}%`}</title>
+                                        </g>
+                                    ))}
+                                    {/* Average: hollow circle, visually separate */}
+                                    <circle cx={ax} cy={ay} r="5"
+                                        fill="none" stroke={METHOD_COLORS[m]} strokeWidth="2" opacity={0.55} />
+                                    <title>{`${m} – avg: ${avgVal.toFixed(2)}%`}</title>
+                                </g>
+                            );
+                        })}
+                        {MAIN_DATASETS.map((d, i) => (
+                            <text key={d} x={datasetX(i)} y={H - 8} textAnchor="middle"
+                                fill="rgb(156,163,175)" fontSize="11">
+                                {d.toUpperCase()}
+                            </text>
+                        ))}
+                        <text x={datasetX(4)} y={H - 8} textAnchor="middle"
+                            fill="rgba(156,163,175,0.45)" fontSize="11" fontStyle="italic">avg</text>
+                    </>
+                )}
+            </svg>
+
+            <div className="flex gap-4 flex-wrap justify-center">
+                {activeMethods.map(m => (
+                    <div key={m} className="flex items-center gap-1.5">
+                        <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METHOD_COLORS[m] }} />
+                        <span className="text-xs text-[var(--color-honeydew)]/60 capitalize">{m}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────
+export default function Results({ className }) {
+    const [active, setActive] = useState(
+        Object.fromEntries(METHODS.map(m => [m, m === "zscl"]))
+    );
+    const toggle = m => setActive(prev => ({ ...prev, [m]: !prev[m] }));
+    const activeMethods = METHODS.filter(m => active[m]);
+
+    return (
+        <div className={`${className} flex flex-col gap-8 pt-10 items-center pb-12 px-6`}>
+            <h1 className="text-3xl font-bold">Results</h1>
+
+            {/* Method selector */}
+            <div className="w-full max-w-3xl bg-white/10 rounded-md p-2 gap-2 flex flex-wrap justify-center">
+                {METHODS.map(m => (
+                    <button key={m} onClick={() => toggle(m)}
+                        className={`flex-1 min-w-20 rounded-md px-4 py-2.5 capitalize text-sm transition duration-300 ${
+                            active[m]
+                                ? "bg-[var(--color-magenta)]/60 text-[var(--color-honeydew)]"
+                                : "text-[var(--color-honeydew)]/60 hover:bg-white/10"
+                        }`}>
+                        {m}
                     </button>
                 ))}
             </div>
 
-            <p className="text-sm text-gray-400">
-                Selected: {activeModels.length > 0 ? activeModels.join(", ") : "None"}
-            </p>
+            {activeMethods.length === 0 && (
+                <p className="text-[var(--color-honeydew)]/30 text-sm">Select at least one method above</p>
+            )}
 
-            <hr className="w-9/10 border-[var(--color-honeydew)]/50" />
-
-            {/* Comparison Table */}
-            <div className="w-9/10 border-2 border-[var(--color-onyx)] rounded-md overflow-hidden">
-                {activeModels.length === 0 ? (
-                    <div className="w-full text-center text-gray-400 py-10">
-                        Select at least one model to view comparison
-                    </div>
-                ) : (
-                    <table className="w-full">
-                        <thead>
-                            <tr className="border-b border-[var(--color-honeydew)]/30">
-                                <th className="p-4 text-left bg-white/5 w-48">Metric</th>
-                                {activeModels.map((modelName) => (
-                                    <th
-                                        key={modelName}
-                                        className="p-4 text-center font-semibold"
-                                    >
-                                        {modelName}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {ROW_LABELS.map((row, idx) => (
-                                <tr
-                                    key={row.key}
-                                    // className={idx % 2 === 0 ? "bg-white/5" : ""}
-                                >
-                                    <td className={`p-4 text-left font-medium border-r border-[var(--color-honeydew)]/20 border-2  ${idx % 2 === 0 ? " bg-white/5" : ""}`}>
-                                        {row.label}
-                                    </td>
-                                    {activeModels.map((modelName) => {
-                                        const model = MODELS.find(m => m.name === modelName);
-                                        const value = model && results[model.key] ? results[model.key][row.key] : "—";
-                                        return (
-                                            <td
-                                                key={`${modelName}-${row.key}`}
-                                                className={`p-4 text-center ${idx % 2 === 0 ? "bg-white/5" : ""}`}
-                                            >
-                                                {typeof value === "number" || !isNaN(value) ? `${value}%` : value}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
+            {activeMethods.length > 0 && (
+                <>
+                    {/* Accuracy heatmaps */}
+                    <section className="w-full max-w-6xl flex flex-col gap-4">
+                        <SectionDivider label="Accuracy on Trained Datasets" />
+                        <div className="flex flex-wrap gap-8 justify-center">
+                            {activeMethods.map(m => (
+                                <HeatmapCard key={m} method={m} data={ATD[m]} />
                             ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
-
-            {/* Chart Section */}
-            <div className="w-9/10 flex items-center justify-between mt-6">
-                <h2 className="text-2xl font-bold">Performance Across Datasets</h2>
-                <div className="flex items-center gap-4">
-                    {/* Chart Data Dropdown */}
-                    <select
-                        className="bg-white/10 border border-[var(--color-onyx)] rounded-md px-3 py-2 hover:bg-white/20 transition duration-300"
-                        value={selectedChartData}
-                        onChange={(e) => setSelectedChartData(e.target.value)}
-                    >
-                        {CHART_OPTIONS.map(option => (
-                            <option key={option.key} value={option.key}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-                    {/* Chart Type Toggle */}
-                    <div className="flex bg-white/10 rounded-md p-1 gap-1">
-                    <button
-                        className={`px-4 py-2 rounded transition duration-300 ${
-                            chartType === "bar"
-                                ? "bg-[var(--color-magenta)]/60"
-                                : "hover:bg-white/10"
-                        }`}
-                        onClick={() => setChartType("bar")}
-                    >
-                        Bar
-                    </button>
-                    <button
-                        className={`px-4 py-2 rounded transition duration-300 ${
-                            chartType === "line"
-                                ? "bg-[var(--color-magenta)]/60"
-                                : "hover:bg-white/10"
-                        }`}
-                        onClick={() => setChartType("line")}
-                    >
-                        Line
-                    </button>
-                    </div>
-                    {/* Max Scale Toggle */}
-                    <button
-                        className={`px-4 py-2 rounded transition duration-300 border ${
-                            useMaxScale
-                                ? "bg-[var(--color-magenta)]/60 border-[var(--color-magenta)]"
-                                : "bg-white/10 border-transparent hover:bg-white/20"
-                        }`}
-                        onClick={() => setUseMaxScale(!useMaxScale)}
-                        title="Scale Y-axis to max data value"
-                    >
-                        Auto Scale (Y-axis)
-                    </button>
-                </div>
-            </div>
-            <div className="w-9/10 border-2 border-[var(--color-onyx)] rounded-md p-6">
-                {activeModels.length === 0 ? (
-                    <div className="w-full text-center text-gray-400 py-10">
-                        Select at least one model to view chart
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-4">
-                        {/* Chart Legend */}
-                        <div className="flex gap-6 justify-center mb-8">
-                            {chartData.datasets
-                                .filter((dataset) => activeModels.includes(dataset.name))
-                                .map((dataset) => (
-                                    <div key={dataset.name} className="flex items-center gap-2">
-                                        <div
-                                            className="w-4 h-4 rounded"
-                                            style={{ backgroundColor: dataset.color }}
-                                        />
-                                        <span className="text-sm">{dataset.name}</span>
-                                    </div>
-                                ))}
                         </div>
+                    </section>
 
-                        {chartType === "bar" ? (
-                            /* Bar Chart */
-                            <div className="flex gap-2 h-64">
-                                {/* Y-axis labels */}
-                                <div className="flex flex-col justify-between h-48 text-xs text-gray-400 pr-2">
-                                    <span>{yAxisMax}%</span>
-                                    <span>{Math.round(yAxisMax * 0.75)}%</span>
-                                    <span>{Math.round(yAxisMax * 0.5)}%</span>
-                                    <span>{Math.round(yAxisMax * 0.25)}%</span>
-                                    <span>0%</span>
-                                </div>
-                                <div className="flex items-end justify-around gap-4 flex-1">
-                                {chartData.labels.map((label, labelIdx) => (
-                                    <div key={label} className="flex flex-col items-center gap-2 flex-1">
-                                        <div className="flex items-end gap-1 h-48">
-                                            {chartData.datasets
-                                                .filter((dataset) => activeModels.includes(dataset.name))
-                                                .map((dataset) => (
-                                                    <div
-                                                        key={`${dataset.name}-${label}`}
-                                                        className="w-8 rounded-t transition-all duration-300 relative group"
-                                                        style={{
-                                                            height: `${(dataset.values[labelIdx] / yAxisMax) * 100}%`,
-                                                            backgroundColor: dataset.color,
-                                                            opacity: 0.8,
-                                                        }}
-                                                    >
-                                                        {/* Tooltip */}
-                                                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                                            {dataset.values[labelIdx]}%
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                        </div>
-                                        <span className="text-sm text-gray-400">{label}</span>
-                                    </div>
-                                ))}
-                                </div>
-                            </div>
-                        ) : (
-                            /* Line Chart */
-                            <div className="relative">
-                                <svg className="w-full" style={{ height: "300px" }} viewBox="0 0 550 260" preserveAspectRatio="xMidYMid meet">
-                                    {/* Grid lines */}
-                                    {[0, 0.25, 0.5, 0.75, 1].map((fraction) => (
-                                        <g key={fraction}>
-                                            <line
-                                                x1="50"
-                                                y1={220 - fraction * 200}
-                                                x2="530"
-                                                y2={220 - fraction * 200}
-                                                stroke="rgba(255,255,255,0.1)"
-                                                strokeWidth="1"
-                                            />
-                                            {/* Y-axis labels */}
-                                            <text
-                                                x="45"
-                                                y={220 - fraction * 200 + 4}
-                                                textAnchor="end"
-                                                fill="rgb(156, 163, 175)"
-                                                fontSize="11"
-                                            >
-                                                {Math.round(yAxisMax * fraction)}%
-                                            </text>
-                                        </g>
-                                    ))}
-                                    {/* Lines for each dataset */}
-                                    {chartData.datasets
-                                        .filter((dataset) => activeModels.includes(dataset.name))
-                                        .map((dataset) => {
-                                            const points = dataset.values
-                                                .map((val, idx) => {
-                                                    const x = (idx / (chartData.labels.length - 1)) * 480 + 50;
-                                                    const y = 220 - (val / yAxisMax) * 200;
-                                                    return `${x},${y}`;
-                                                })
-                                                .join(" ");
-                                            return (
-                                                <g key={dataset.name}>
-                                                    <polyline
-                                                        points={points}
-                                                        fill="none"
-                                                        stroke={dataset.color}
-                                                        strokeWidth="3"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        className="transition-all duration-300"
-                                                    />
-                                                    {/* Data points */}
-                                                    {dataset.values.map((val, idx) => {
-                                                        const x = (idx / (chartData.labels.length - 1)) * 480 + 50;
-                                                        const y = 220 - (val / yAxisMax) * 200;
-                                                        return (
-                                                            <g key={`${dataset.name}-point-${idx}`} className="group cursor-pointer">
-                                                                {/* Larger invisible hover area */}
-                                                                <circle
-                                                                    cx={x}
-                                                                    cy={y}
-                                                                    r="10"
-                                                                    fill="transparent"
-                                                                />
-                                                                {/* Visible dot */}
-                                                                <circle
-                                                                    cx={x}
-                                                                    cy={y}
-                                                                    r="6"
-                                                                    fill={dataset.color}
-                                                                    className="transition-all duration-300 group-hover:r-8"
-                                                                />
-                                                                {/* Tooltip */}
-                                                                <g className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                                                    <rect
-                                                                        x={x - 35}
-                                                                        y={y - 35}
-                                                                        width="70"
-                                                                        height="24"
-                                                                        rx="4"
-                                                                        fill="rgba(0,0,0,0.9)"
-                                                                    />
-                                                                    <text
-                                                                        x={x}
-                                                                        y={y - 18}
-                                                                        textAnchor="middle"
-                                                                        fill="white"
-                                                                        fontSize="12"
-                                                                    >
-                                                                        {`${val}%`}
-                                                                    </text>
-                                                                </g>
-                                                            </g>
-                                                        );
-                                                    })}
-                                                </g>
-                                            );
-                                        })}
-                                    {/* X-axis labels inside SVG */}
-                                    {chartData.labels.map((label, idx) => {
-                                        const x = (idx / (chartData.labels.length - 1)) * 480 + 50;
-                                        return (
-                                            <text
-                                                key={label}
-                                                x={x}
-                                                y="240"
-                                                textAnchor="middle"
-                                                fill="rgb(156, 163, 175)"
-                                                fontSize="12"
-                                            >
-                                                {label}
-                                            </text>
-                                        );
-                                    })}
-                                </svg>
-                            </div>
-                        )}
+                    {/* Backward transfer */}
+                    <section className="w-full max-w-3xl">
+                        <SectionDivider label="Backward Transfer" />
+                        <div className="mt-4">
+                            <TransferChart title="" data={BT} activeMethods={activeMethods} />
+                        </div>
+                    </section>
 
-                    </div>
-                )}
-            </div>
+                    {/* Forward transfer */}
+                    <section className="w-full max-w-3xl">
+                        <SectionDivider label="Forward Transfer" />
+                        <div className="mt-4">
+                            <TransferChart title="" data={FT} activeMethods={activeMethods} />
+                        </div>
+                    </section>
+                </>
+            )}
         </div>
     );
 }

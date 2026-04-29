@@ -1,0 +1,6 @@
+dataset,base,DTD,DTD-MNIST,DTD-MNIST-EuroSAT,DTD-MNIST-EuroSAT-Flowers
+dtd,45.11,54.89,2.45,2.34,2.34
+mnist,58.90,5.28,56.43,10.33,9.77
+eurosat,55.31,5.26,6.19,54.72,14.26
+flowers,71.08,1.37,1.45,1.61,12.86
+average,57.60,16.70,16.63,17.25,9.81
