@@ -89,6 +89,7 @@ export default function TSNETransition({ className }) {
     const [csvs, setCsvs]               = useState([]); // [base, dtd, mnist, eurosat, flowers]
     const [loading, setLoading]         = useState(false);
     const [sliderValue, setSliderValue] = useState(0);
+    const [snapEnabled, setSnapEnabled] = useState(true);
 
     const canvasRef  = useRef(null);
     const csvCache   = useRef({});
@@ -146,6 +147,12 @@ export default function TSNETransition({ className }) {
             drawCanvas(canvasRef.current, fromData, toData, interpT, bounds);
     }, [fromData, toData, interpT, bounds]);
 
+    function applySnap(raw) {
+        if (!snapEnabled) return raw;
+        const nearest = Math.round(raw / 100) * 100;
+        return Math.abs(raw - nearest) <= 12 ? nearest : raw;
+    }
+
     // Which step label to highlight: the one closest to the slider
     const nearestStep = Math.round(sliderValue / 100);
 
@@ -187,15 +194,51 @@ export default function TSNETransition({ className }) {
 
             {/* ── Slider + step labels ──────────────────────────────── */}
             <div className="w-full max-w-2xl flex flex-col gap-2">
-                <input
-                    type="range"
-                    min={0}
-                    max={SLIDER_MAX}
-                    value={sliderValue}
-                    onChange={e => setSliderValue(Number(e.target.value))}
-                    disabled={csvs.length < 2}
-                    className="w-full accent-[var(--color-magenta)] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                />
+                <div className="flex justify-end">
+                    <button
+                        onClick={() => setSnapEnabled(s => !s)}
+                        className={`px-3 py-1.5 text-xs rounded-md border transition duration-300 ${
+                            snapEnabled
+                                ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/40 text-[var(--color-honeydew)]"
+                                : "bg-white/10 border-[var(--color-honeydew)]/20 text-[var(--color-honeydew)]/70 hover:bg-[var(--color-magenta)]/30"
+                        }`}
+                    >
+                        Snap {snapEnabled ? "On" : "Off"}
+                    </button>
+                </div>
+                <div className="relative w-full">
+                    <input
+                        type="range"
+                        min={0}
+                        max={SLIDER_MAX}
+                        value={sliderValue}
+                        onChange={e => setSliderValue(applySnap(Number(e.target.value)))}
+                        onMouseUp={e => setSliderValue(Math.round(Number(e.target.value) / 100) * 100)}
+                        onTouchEnd={e => setSliderValue(Math.round(Number(e.target.value) / 100) * 100)}
+                        disabled={csvs.length < 2}
+                        className="w-full accent-[var(--color-magenta)] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    />
+                    {[1, 2, 3].map(i => {
+                        // Range thumb (16px wide) doesn't travel the full element width.
+                        // Thumb centre at fraction f sits at: f*W + (0.5 - f)*thumbWidth
+                        // so we offset the naive % by (0.5 - f) * thumbWidth px.
+                        const frac = i / (STEPS.length - 1);
+                        return (
+                            <div
+                                key={i}
+                                style={{
+                                    position: 'absolute',
+                                    left: `calc(${frac * 100}% + ${(0.5 - frac) * 16}px)`,
+                                    top: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    pointerEvents: 'none',
+                                }}
+                            >
+                                <div className="w-px h-3 bg-[var(--color-honeydew)]/35 rounded-full" />
+                            </div>
+                        );
+                    })}
+                </div>
                 <div className="flex justify-between px-1">
                     {STEPS.map((label, i) => (
                         <button
