@@ -37,6 +37,7 @@ export default function Sequential({ className }) {
     const [inputMode, setInputMode] = useState("upload");
     const [noImageError, setNoImageError] = useState(false);
     const [noSelectionError, setNoSelectionError] = useState(false);
+    const [correctClass, setCorrectClass] = useState(null);
 
     const [limitProbabilities, setLimitProbabilities] = useState("5");
 
@@ -142,11 +143,18 @@ export default function Sequential({ className }) {
     }
 
 
+    function findCorrectLabel(predictions, cls) {
+        if (!cls) return null;
+        const norm = cls.toLowerCase();
+        return Object.keys(predictions).find(key => key.toLowerCase().includes(norm)) ?? null;
+    }
+
     const handleUpload = useCallback(async (files) => {
         if (!files || files.length === 0) return;
         const file = files[0];
 
         setPreview(URL.createObjectURL(file));
+        setCorrectClass(null);
 
         const formData = new FormData();
         formData.append("file", file);
@@ -244,7 +252,7 @@ export default function Sequential({ className }) {
                 hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)] transition duration-300"
                     : ""}
                 w-1/3 rounded-md p-3 z-1 border-transparent border-1`}
-                    onClick={() => { setInputMode("upload"); setPreview(null); }}>
+                    onClick={() => { setInputMode("upload"); setPreview(null); setCorrectClass(null); }}>
                     Upload Image
                 </button>
 
@@ -253,7 +261,7 @@ export default function Sequential({ className }) {
                 hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)] transition duration-300"
                     : ""}
                 w-1/3 rounded-md p-3 z-1 border-transparent border-1`}
-                    onClick={() => { setInputMode("camera"); setPreview(null); }}>
+                    onClick={() => { setInputMode("camera"); setPreview(null); setCorrectClass(null); }}>
                     Capture Image
                 </button>
 
@@ -280,7 +288,10 @@ export default function Sequential({ className }) {
                 <Camera setPreview={setPreview} handleUpload={handleUpload} />
             )}
             {inputMode === "dataset" && (
-                <DatasetImageSelector handleUpload={handleUpload} />
+                <DatasetImageSelector
+                    handleUpload={handleUpload}
+                    onImageSelected={(_, label) => setCorrectClass(label)}
+                />
             )}
 
             {(preview && inputMode !== "camera") &&
@@ -406,29 +417,52 @@ export default function Sequential({ className }) {
                             <span>Comparing {Object.keys(results).length} model{Object.keys(results).length > 1 ? 's' : ''}</span>
                         </div>
                         <div className="flex flex-row gap-6 overflow-x-auto pb-4">
-                            {Object.entries(results).map(([modelName, modelResults], index) => (
-                                <div
-                                    key={modelName}
-                                    className="flex flex-col gap-2 min-w-[280px] flex-1 bg-white/5 rounded-lg p-4"
-                                >
-                                    <div className="flex items-center gap-2 border-b border-[var(--color-honeydew)]/30 pb-2">
-                                        <span className="bg-[var(--color-magenta)]/60 text-xs px-2 py-1 rounded">
-                                            #{index + 1}
-                                        </span>
-                                        <span className="text-lg font-semibold truncate" title={modelName}>
-                                            {modelName}
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        {((limitProbabilities === "all")
-                                            ? Object.entries(modelResults)
-                                            : Object.entries(modelResults).slice(0, Number(limitProbabilities)))
-                                            .map(([label, prob]) => (
-                                                <ProbabilityBar key={`${modelName}-${label}`} label={label} prob={prob}></ProbabilityBar>
+                            {Object.entries(results).map(([modelName, modelResults], index) => {
+                                const allEntries = Object.entries(modelResults);
+                                const correctLabel = findCorrectLabel(modelResults, correctClass);
+                                const correctRank = correctLabel
+                                    ? allEntries.findIndex(([l]) => l === correctLabel)
+                                    : -1;
+                                const isTop1 = correctRank === 0;
+                                const isTop5 = correctRank >= 0 && correctRank < 5;
+                                const displayed = limitProbabilities === "all"
+                                    ? allEntries
+                                    : allEntries.slice(0, Number(limitProbabilities));
+                                return (
+                                    <div
+                                        key={modelName}
+                                        className="flex flex-col gap-2 min-w-[280px] flex-1 bg-white/5 rounded-lg p-4"
+                                    >
+                                        <div className="flex items-center gap-2 border-b border-[var(--color-honeydew)]/30 pb-2 flex-wrap">
+                                            <span className="bg-[var(--color-magenta)]/60 text-xs px-2 py-1 rounded">
+                                                #{index + 1}
+                                            </span>
+                                            <span className="text-lg font-semibold truncate flex-1" title={modelName}>
+                                                {modelName}
+                                            </span>
+                                            {correctClass && isTop1 && (
+                                                <span className="text-xs px-2 py-1 rounded bg-green-600/80 font-bold whitespace-nowrap">Top-1 ✓</span>
+                                            )}
+                                            {correctClass && !isTop1 && isTop5 && (
+                                                <span className="text-xs px-2 py-1 rounded bg-yellow-600/80 font-bold whitespace-nowrap">Top-5 ✓</span>
+                                            )}
+                                            {correctClass && !isTop5 && correctRank !== -1 && (
+                                                <span className="text-xs px-2 py-1 rounded bg-red-700/60 font-bold whitespace-nowrap">Top-{correctRank + 1}</span>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            {displayed.map(([label, prob]) => (
+                                                <ProbabilityBar
+                                                    key={`${modelName}-${label}`}
+                                                    label={label}
+                                                    prob={prob}
+                                                    isCorrect={label === correctLabel}
+                                                />
                                             ))}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </>
                 )}

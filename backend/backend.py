@@ -12,6 +12,7 @@ from PIL import Image
 
 import os
 import io
+import csv as _csv
 
 
 base_path = os.path.dirname(__file__)
@@ -36,14 +37,70 @@ uploaded_image = None
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Model paths array (for Home page)
-model_paths = [
-    os.path.join(base_path, "models/zscl+freeze/flowers.pth"),
-    os.path.join(base_path, "models/finetune/flowers.pth"),  # Temporary placeholder path
-]
+models_dir = os.path.join(base_path, "models")
 
-# Active models array (0 = inactive, 1 = active)
-active_models = [1, 0]  # First model active by default
+METHOD_DISPLAY = {
+    "finetune": "Finetune",
+    "zscl": "ZSCL",
+    "zscl+freeze": "ZSCL+Freeze",
+    "zscl+ogd": "ZSCL+OGD",
+}
+
+def make_display_name(method_folder: str, filename: str) -> str:
+    dataset = os.path.splitext(filename)[0]
+    method = METHOD_DISPLAY.get(method_folder.lower(), method_folder.replace("+", "+").title())
+    return f"{method} - {dataset.title()}"
+
+def discover_models():
+    """Scan models/ and return sorted list of dicts with path, rel, display_name, group."""
+    found = []
+    if not os.path.exists(models_dir):
+        return found
+    # Root-level .pth files (e.g. base.pth) — no subfolder
+    for fname in sorted(os.listdir(models_dir)):
+        fpath = os.path.join(models_dir, fname)
+        if os.path.isfile(fpath) and fname.endswith(".pth"):
+            display = os.path.splitext(fname)[0].replace("_", " ").replace("-", " ").title()
+            found.append({
+                "path": fpath,
+                "rel": fname,
+                "display_name": display,
+                "group": "base",
+            })
+    # Subfolder models — grouped by folder name
+    for folder in sorted(os.listdir(models_dir)):
+        folder_path = os.path.join(models_dir, folder)
+        if not os.path.isdir(folder_path):
+            continue
+        for fname in sorted(os.listdir(folder_path)):
+            if not fname.endswith(".pth"):
+                continue
+            found.append({
+                "path": os.path.join(folder_path, fname),
+                "rel": f"{folder}/{fname}",
+                "display_name": make_display_name(folder, fname),
+                "group": folder,
+            })
+    return found
+
+# Active state keyed by abs path — persists across re-scans
+model_active_state: dict = {}
+
+def sync_models():
+    """Re-scan models dir and update model_paths / active_models globals."""
+    global model_paths, active_models
+    discovered = discover_models()
+    for i, m in enumerate(discovered):
+        if m["path"] not in model_active_state:
+            model_active_state[m["path"]] = (i == 0)
+    model_paths = [m["path"] for m in discovered]
+    active_models = [1 if model_active_state.get(p, False) else 0 for p in model_paths]
+    return discovered
+
+# Model paths / active arrays — populated by sync_models()
+model_paths: list = []
+active_models: list = []
+sync_models()
 
 # Dictionary to store loaded models
 loaded_models = {}
@@ -78,8 +135,9 @@ def load_model(path):
     return model
 
 
-# Load the first model by default
-loaded_models[model_paths[0]] = load_model(model_paths[0])
+# Load the first model by default (if any exist)
+if model_paths:
+    loaded_models[model_paths[0]] = load_model(model_paths[0])
 
 classname_path = os.path.join(base_path, "classes/custom_classes.txt") 
 
@@ -90,6 +148,73 @@ class_names = [line.strip() for line in lines]
 
 prompt_pre = "a photo of a"
 prompt_suf = ""
+
+tsne_dir = os.path.join(base_path, "tsne_images")
+
+@app.get("/tsne/base")
+def getTsneBase():
+    path = os.path.join(tsne_dir, "base_tsne.png")
+    return FileResponse(path, media_type="image/png")
+
+@app.get("/tsne/methods")
+def getTsneMethods():
+    methods = sorted([d for d in os.listdir(tsne_dir) if os.path.isdir(os.path.join(tsne_dir, d))])
+    return {"methods": methods}
+
+@app.get("/tsne/{method}/list")
+def listTsneImages(method: str):
+    method_dir = os.path.join(tsne_dir, method)
+    if not os.path.isdir(method_dir) or ".." in method:
+        return {"error": "Method not found"}
+    files = sorted([f for f in os.listdir(method_dir) if f.endswith(".png")])
+    return {"images": files}
+
+@app.get("/tsne/{method}/{filename}")
+def getTsneImage(method: str, filename: str):
+    if ".." in method or ".." in filename:
+        return {"error": "Invalid path"}
+    path = os.path.join(tsne_dir, method, filename)
+    if not os.path.isfile(path):
+        return {"error": "Image not found"}
+    return FileResponse(path, media_type="image/png")
+
+tsne_csv_dir = os.path.join(base_path, "tsne_csv")
+
+def parse_tsne_csv(path: str):
+    rows = []
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = _csv.DictReader(f)
+        for row in reader:
+            rows.append({
+                "x": float(row["x"]),
+                "y": float(row["y"]),
+                "label": int(row["label"]),
+                "classname": row["classname"],
+                "dataset": row["dataset"],
+            })
+    return rows
+
+@app.get("/tsne-csv/base")
+def getTsneCsvBase():
+    return parse_tsne_csv(os.path.join(tsne_csv_dir, "base_tsne.csv"))
+
+@app.get("/tsne-csv/{method}/list")
+def listTsneCsvFiles(method: str):
+    if ".." in method:
+        return {"error": "Invalid path"}
+    method_dir = os.path.join(tsne_csv_dir, method)
+    if not os.path.isdir(method_dir):
+        return {"error": "Method not found"}
+    return {"files": sorted(f for f in os.listdir(method_dir) if f.endswith(".csv"))}
+
+@app.get("/tsne-csv/{method}/{filename}")
+def getTsneCsvFile(method: str, filename: str):
+    if ".." in method or ".." in filename:
+        return {"error": "Invalid path"}
+    path = os.path.join(tsne_csv_dir, method, filename)
+    if not os.path.isfile(path):
+        return {"error": "File not found"}
+    return parse_tsne_csv(path)
 
 @app.get("/")
 def default():
@@ -133,7 +258,10 @@ def predict():
                 continue
 
             model = loaded_models[model_path]
-            model_name = os.path.basename(model_path)
+            model_name = make_display_name(
+                os.path.basename(os.path.dirname(model_path)),
+                os.path.basename(model_path),
+            )
 
             with torch.no_grad():
                 logits_per_image, _ = model(image, text)
@@ -198,11 +326,18 @@ async def saveClassNames(data: dict = Body(...)):
 
 @app.get("/getmodels")
 def getModels():
-    """Get the list of model paths and their active status"""
-    global model_paths, active_models
+    """Rescan models/ dir and return list with display names and active state."""
+    discovered = sync_models()
     return {
-        "models": [os.path.basename(path) for path in model_paths],
-        "active": active_models
+        "models": [
+            {
+                "rel": m["rel"],
+                "display_name": m["display_name"],
+                "group": m["group"],
+                "active": model_active_state.get(m["path"], False),
+            }
+            for m in discovered
+        ]
     }
 
 
@@ -222,6 +357,10 @@ def setActiveModels(data: list = Body(...)):
         return {"error": "Array must contain only 0 or 1 values"}
 
     active_models = data
+
+    # Persist active state so re-scans preserve selections
+    for i, is_active in enumerate(active_models):
+        model_active_state[model_paths[i]] = (is_active == 1)
 
     # Load all active models that aren't already loaded
     for i, is_active in enumerate(active_models):

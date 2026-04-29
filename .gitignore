@@ -3,3 +3,4 @@ backend/models/*.pth
 backend/models/**/*.pth
 backend/__pycache__/
 .claude/
+Aircraft.pth

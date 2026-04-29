@@ -26,18 +26,17 @@ export function DatasetImageSelector({ handleUpload, onImageSelected }) {
         setSelectedImage(null);
     };
 
-    const handleImageClick = async (imageName) => {
-        setSelectedImage(imageName);
-        const imagePath = `/test_images/${selectedDataset}/${imageName}`;
+    const handleImageClick = async (item) => {
+        setSelectedImage(item.file);
+        const imagePath = `/test_images/${selectedDataset}/${item.file}`;
 
-        // Fetch the image and convert to File for handleUpload
         const response = await fetch(imagePath);
         const blob = await response.blob();
-        const file = new File([blob], imageName, { type: blob.type });
+        const file = new File([blob], item.file, { type: blob.type });
 
         handleUpload([file]);
         if (onImageSelected) {
-            onImageSelected(imagePath);
+            onImageSelected(imagePath, item.label);
         }
     };
 
@@ -90,26 +89,26 @@ export function DatasetImageSelector({ handleUpload, onImageSelected }) {
                 <span className="text-lg font-medium capitalize">{selectedDataset} Images</span>
             </div>
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-h-96 overflow-y-auto p-2">
-                {manifest[selectedDataset]?.map((imageName) => {
-                    const imagePath = `/test_images/${selectedDataset}/${imageName}`;
-                    const isSelected = selectedImage === imageName;
+                {manifest[selectedDataset]?.map((item) => {
+                    const imagePath = `/test_images/${selectedDataset}/${item.file}`;
+                    const isSelected = selectedImage === item.file;
                     return (
                         <div
-                            key={imageName}
+                            key={item.file}
                             className={`cursor-pointer border-2 rounded-md overflow-hidden transition ${
                                 isSelected
                                     ? "border-[var(--color-magenta)] ring-2 ring-[var(--color-magenta)]"
                                     : "border-transparent hover:border-[var(--color-honeydew)]/50"
                             }`}
-                            onClick={() => handleImageClick(imageName)}
+                            onClick={() => handleImageClick(item)}
                         >
                             <img
                                 src={imagePath}
-                                alt={imageName}
+                                alt={item.label}
                                 className="w-full h-24 object-cover"
                             />
-                            <p className="text-xs text-center p-1 truncate" title={imageName}>
-                                {imageName}
+                            <p className="text-xs text-center p-1 truncate" title={item.label}>
+                                {item.label}
                             </p>
                         </div>
                     );

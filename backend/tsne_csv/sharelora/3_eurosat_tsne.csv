@@ -1,0 +1,1034 @@
+x,y,label,classname,dataset
+35.82068,-24.887558,0,707-320,Aircraft
+36.559357,-22.885355,0,707-320,Aircraft
+35.44686,-22.702929,0,707-320,Aircraft
+37.795628,-24.047634,0,707-320,Aircraft
+37.442024,-23.385118,0,707-320,Aircraft
+34.694912,-23.462412,0,707-320,Aircraft
+37.581486,-23.377823,0,707-320,Aircraft
+36.69669,-23.805569,0,707-320,Aircraft
+34.339504,-24.235136,0,707-320,Aircraft
+37.645138,-25.182087,0,707-320,Aircraft
+35.234234,-23.467403,0,707-320,Aircraft
+36.270943,-24.808783,0,707-320,Aircraft
+34.82802,-23.565487,0,707-320,Aircraft
+36.973583,-22.043568,0,707-320,Aircraft
+36.797314,-23.923483,0,707-320,Aircraft
+36.19976,-24.853987,0,707-320,Aircraft
+36.091446,-23.71272,0,707-320,Aircraft
+35.18176,-23.934473,0,707-320,Aircraft
+34.772255,-22.629135,0,707-320,Aircraft
+37.74439,-24.470873,0,707-320,Aircraft
+37.058464,-24.93182,0,707-320,Aircraft
+35.947124,-22.64403,0,707-320,Aircraft
+37.684258,-23.674559,0,707-320,Aircraft
+35.746437,-24.28576,0,707-320,Aircraft
+37.534237,-23.229038,0,707-320,Aircraft
+36.48402,-24.03988,0,707-320,Aircraft
+36.326496,-23.375782,0,707-320,Aircraft
+37.293064,-23.849861,0,707-320,Aircraft
+38.232834,-23.584085,0,707-320,Aircraft
+34.869484,-23.325752,0,707-320,Aircraft
+36.96437,-24.16924,0,707-320,Aircraft
+35.306442,-22.031017,0,707-320,Aircraft
+38.54946,-24.496576,0,707-320,Aircraft
+44.611996,-0.94147015,1,off-center face,Caltech101
+46.09232,-0.1572263,1,off-center face,Caltech101
+44.026802,-0.8803862,1,off-center face,Caltech101
+40.739075,1.9129466,2,centered face,Caltech101
+39.74696,0.21967626,1,off-center face,Caltech101
+39.817074,0.24449712,1,off-center face,Caltech101
+42.211765,2.6895423,2,centered face,Caltech101
+45.74642,-1.8584719,1,off-center face,Caltech101
+42.08707,0.85103065,1,off-center face,Caltech101
+45.17469,1.616609,2,centered face,Caltech101
+41.274635,-0.21995585,1,off-center face,Caltech101
+42.279007,2.7576036,1,off-center face,Caltech101
+42.232998,2.6772892,1,off-center face,Caltech101
+45.30553,0.1683631,2,centered face,Caltech101
+41.25852,-0.15783653,2,centered face,Caltech101
+43.461765,-1.1648821,1,off-center face,Caltech101
+42.932205,-1.4429871,1,off-center face,Caltech101
+40.94846,-0.8588635,1,off-center face,Caltech101
+45.168518,1.599808,1,off-center face,Caltech101
+45.18067,1.5289756,2,centered face,Caltech101
+44.608055,-1.5630946,1,off-center face,Caltech101
+44.75609,-1.663545,1,off-center face,Caltech101
+45.153362,1.0410713,1,off-center face,Caltech101
+42.27444,2.8822818,2,centered face,Caltech101
+45.179916,-2.3287992,1,off-center face,Caltech101
+45.961514,-1.0960441,2,centered face,Caltech101
+43.522312,-2.1865945,2,centered face,Caltech101
+45.06078,1.4964294,1,off-center face,Caltech101
+45.16328,-2.3550615,2,centered face,Caltech101
+45.244858,-2.44942,2,centered face,Caltech101
+45.312466,-2.3643463,2,centered face,Caltech101
+45.688484,-0.10238406,2,centered face,Caltech101
+43.727932,-0.2221193,1,off-center face,Caltech101
+41.276142,-0.13433345,2,centered face,Caltech101
+39.402473,0.16810197,1,off-center face,Caltech101
+40.71367,1.9348068,1,off-center face,Caltech101
+44.139732,-0.7253731,1,off-center face,Caltech101
+43.525303,-2.200288,2,centered face,Caltech101
+40.269096,0.7530363,2,centered face,Caltech101
+41.95073,0.44297996,1,off-center face,Caltech101
+40.77916,1.9583517,2,centered face,Caltech101
+41.724648,0.433869,2,centered face,Caltech101
+42.109055,0.9363737,1,off-center face,Caltech101
+41.76735,0.7703953,2,centered face,Caltech101
+44.630085,-1.352771,1,off-center face,Caltech101
+40.188633,0.7142365,1,off-center face,Caltech101
+41.5706,-0.3582933,1,off-center face,Caltech101
+45.914154,-0.06712669,1,off-center face,Caltech101
+45.805645,-0.0695582,2,centered face,Caltech101
+16.058533,-29.623528,3,airplane,CIFAR10
+19.703262,-25.91317,3,airplane,CIFAR10
+20.993464,-27.37655,3,airplane,CIFAR10
+19.066038,-26.453283,3,airplane,CIFAR10
+18.137089,-29.707232,3,airplane,CIFAR10
+21.294994,-28.85342,3,airplane,CIFAR10
+16.856497,-27.409946,3,airplane,CIFAR10
+18.766193,-30.413017,3,airplane,CIFAR10
+21.241047,-31.308233,3,airplane,CIFAR10
+21.836874,-27.760803,3,airplane,CIFAR10
+18.020632,-27.585968,3,airplane,CIFAR10
+19.793243,-29.41166,3,airplane,CIFAR10
+21.340704,-26.035744,3,airplane,CIFAR10
+23.003054,-29.39377,3,airplane,CIFAR10
+20.81364,-28.050468,3,airplane,CIFAR10
+16.18928,-26.929958,3,airplane,CIFAR10
+16.192204,-26.793446,3,airplane,CIFAR10
+19.852934,-25.20272,3,airplane,CIFAR10
+16.298412,-29.56052,3,airplane,CIFAR10
+17.887117,-27.73456,3,airplane,CIFAR10
+20.57738,-29.059675,3,airplane,CIFAR10
+19.81803,-25.427767,3,airplane,CIFAR10
+19.455845,-30.092712,3,airplane,CIFAR10
+16.948145,-27.834984,3,airplane,CIFAR10
+19.658024,-28.948599,3,airplane,CIFAR10
+19.379892,-27.140482,3,airplane,CIFAR10
+20.198591,-30.414778,3,airplane,CIFAR10
+22.618391,-29.765959,3,airplane,CIFAR10
+18.84466,-28.272116,3,airplane,CIFAR10
+19.748524,-25.871664,3,airplane,CIFAR10
+20.194979,-30.764128,3,airplane,CIFAR10
+18.541683,-25.956776,3,airplane,CIFAR10
+17.901361,-28.823565,3,airplane,CIFAR10
+19.738327,-31.724045,3,airplane,CIFAR10
+20.075113,-28.226786,3,airplane,CIFAR10
+17.150627,-29.29147,3,airplane,CIFAR10
+18.318142,-26.518991,3,airplane,CIFAR10
+21.77309,-28.255962,3,airplane,CIFAR10
+20.09448,-28.44482,3,airplane,CIFAR10
+18.526255,-29.30339,3,airplane,CIFAR10
+18.828367,-30.791176,3,airplane,CIFAR10
+19.410755,-29.505913,3,airplane,CIFAR10
+21.333014,-29.989172,3,airplane,CIFAR10
+20.552004,-27.15047,3,airplane,CIFAR10
+18.79132,-30.912216,3,airplane,CIFAR10
+19.397404,-29.495724,3,airplane,CIFAR10
+19.781843,-25.693588,3,airplane,CIFAR10
+23.098312,-29.365288,3,airplane,CIFAR10
+19.22603,-28.588078,3,airplane,CIFAR10
+17.962261,-29.38926,3,airplane,CIFAR10
+20.642746,-29.647812,3,airplane,CIFAR10
+19.576572,-28.062605,3,airplane,CIFAR10
+16.64694,-27.595308,3,airplane,CIFAR10
+20.854197,-28.520485,3,airplane,CIFAR10
+17.20177,-26.11823,3,airplane,CIFAR10
+18.600904,-28.259497,3,airplane,CIFAR10
+20.791706,-27.555428,3,airplane,CIFAR10
+17.324963,-22.359806,4,apple,CIFAR100
+17.371504,-22.391901,4,apple,CIFAR100
+17.322346,-22.28472,4,apple,CIFAR100
+16.87998,-22.835407,4,apple,CIFAR100
+17.335258,-22.394602,4,apple,CIFAR100
+17.35571,-22.323015,4,apple,CIFAR100
+17.319214,-22.492794,4,apple,CIFAR100
+14.304231,-5.8127337,5,banded,DTD
+13.232325,-5.9626412,5,banded,DTD
+14.755382,-5.3473854,5,banded,DTD
+11.348279,-6.5124784,5,banded,DTD
+13.750343,-8.126196,5,banded,DTD
+13.590112,-5.1485095,5,banded,DTD
+14.07873,-7.3035154,5,banded,DTD
+13.6816025,-6.1542535,5,banded,DTD
+15.144781,-5.91288,5,banded,DTD
+11.744969,-5.944203,5,banded,DTD
+13.444441,-5.1114187,5,banded,DTD
+14.508413,-6.962094,5,banded,DTD
+13.776046,-7.71531,5,banded,DTD
+14.541201,-5.956027,5,banded,DTD
+14.244721,-5.3868737,5,banded,DTD
+14.4410515,-6.970094,5,banded,DTD
+13.714501,-7.478457,5,banded,DTD
+14.928849,-5.0718856,5,banded,DTD
+13.517156,-4.4385114,5,banded,DTD
+13.865047,-6.4296365,5,banded,DTD
+10.759001,-3.1478412,5,banded,DTD
+10.93379,-4.135115,5,banded,DTD
+10.366509,-4.483655,5,banded,DTD
+11.463667,-3.62904,5,banded,DTD
+10.529117,-4.1749945,5,banded,DTD
+10.765513,-4.790011,5,banded,DTD
+10.655428,-3.3029757,5,banded,DTD
+11.299332,-3.565831,5,banded,DTD
+10.085257,-4.9488654,5,banded,DTD
+10.62518,-6.4809623,5,banded,DTD
+12.134394,-4.4126196,5,banded,DTD
+11.119725,-5.485245,5,banded,DTD
+10.090245,-3.7946649,5,banded,DTD
+11.810545,-7.3315134,5,banded,DTD
+10.472344,-4.5279236,5,banded,DTD
+11.297771,-4.7957606,5,banded,DTD
+10.7987385,-4.622984,5,banded,DTD
+12.838264,-5.961867,5,banded,DTD
+12.235686,-5.6008725,5,banded,DTD
+12.391521,-5.1566577,5,banded,DTD
+-1.4905764,-42.97572,6,annual crop land,EuroSAT
+-2.551033,-43.071106,6,annual crop land,EuroSAT
+-0.40563193,-44.68416,6,annual crop land,EuroSAT
+-1.079784,-45.371246,6,annual crop land,EuroSAT
+-3.3749819,-46.587463,6,annual crop land,EuroSAT
+0.46966836,-43.51871,6,annual crop land,EuroSAT
+-1.4400374,-46.165627,6,annual crop land,EuroSAT
+-4.2446055,-46.199635,6,annual crop land,EuroSAT
+-1.9605575,-45.758137,6,annual crop land,EuroSAT
+-2.7960832,-45.691124,6,annual crop land,EuroSAT
+1.0297122,-42.754032,6,annual crop land,EuroSAT
+0.05612717,-44.25603,6,annual crop land,EuroSAT
+1.1213565,-42.68811,6,annual crop land,EuroSAT
+1.866353,-43.589527,6,annual crop land,EuroSAT
+-1.3536137,-46.346474,6,annual crop land,EuroSAT
+0.4282324,-42.9873,6,annual crop land,EuroSAT
+1.4184084,-45.36555,6,annual crop land,EuroSAT
+-0.93245524,-48.06552,6,annual crop land,EuroSAT
+-2.7825031,-47.721027,6,annual crop land,EuroSAT
+1.9341322,-44.477562,6,annual crop land,EuroSAT
+1.3798594,-45.447865,6,annual crop land,EuroSAT
+-1.2542678,-42.477062,6,annual crop land,EuroSAT
+-2.6053832,-46.658627,6,annual crop land,EuroSAT
+0.032493316,-45.15087,6,annual crop land,EuroSAT
+-1.748013,-44.620056,6,annual crop land,EuroSAT
+-1.863869,-45.821312,6,annual crop land,EuroSAT
+-0.3780853,-43.048206,6,annual crop land,EuroSAT
+-1.9547492,-46.480423,6,annual crop land,EuroSAT
+-0.31899288,-48.655163,6,annual crop land,EuroSAT
+0.88377285,-42.115643,6,annual crop land,EuroSAT
+-2.1164258,-45.33948,6,annual crop land,EuroSAT
+-2.4520004,-46.198517,6,annual crop land,EuroSAT
+-2.1004057,-43.18761,6,annual crop land,EuroSAT
+-1.7984699,-44.726376,6,annual crop land,EuroSAT
+-2.6690023,-44.97181,6,annual crop land,EuroSAT
+-4.4301095,-44.432278,6,annual crop land,EuroSAT
+-2.074348,-45.1156,6,annual crop land,EuroSAT
+-0.08339286,-47.020866,6,annual crop land,EuroSAT
+-0.7116541,-47.107956,6,annual crop land,EuroSAT
+-2.8437212,-42.72374,6,annual crop land,EuroSAT
+-3.5839205,-41.76241,6,annual crop land,EuroSAT
+-1.1305733,-44.412678,6,annual crop land,EuroSAT
+-0.76187223,-44.76958,6,annual crop land,EuroSAT
+-3.1717122,-43.842335,6,annual crop land,EuroSAT
+2.2583475,-43.067383,6,annual crop land,EuroSAT
+-2.2589564,-47.85374,6,annual crop land,EuroSAT
+0.52301186,-46.40708,6,annual crop land,EuroSAT
+-3.1526508,-45.27713,6,annual crop land,EuroSAT
+-1.0859658,-45.26817,6,annual crop land,EuroSAT
+-0.9207626,-41.702274,6,annual crop land,EuroSAT
+-3.1598296,-45.78901,6,annual crop land,EuroSAT
+-0.07517853,-43.832027,6,annual crop land,EuroSAT
+0.39636984,-46.05253,6,annual crop land,EuroSAT
+-0.32207516,-42.588673,6,annual crop land,EuroSAT
+-2.28195,-45.862644,6,annual crop land,EuroSAT
+-2.2968793,-44.233597,6,annual crop land,EuroSAT
+-1.4605594,-45.161293,6,annual crop land,EuroSAT
+-1.0794475,-45.953575,6,annual crop land,EuroSAT
+-3.3565938,-42.1596,6,annual crop land,EuroSAT
+-1.56984,-47.33124,6,annual crop land,EuroSAT
+0.5011493,-17.987333,7,pink primrose,Flowers
+0.3402327,-18.344318,7,pink primrose,Flowers
+1.0879195,-18.368404,7,pink primrose,Flowers
+0.45063582,-19.3365,7,pink primrose,Flowers
+0.61356056,-19.07073,7,pink primrose,Flowers
+-0.07343985,-18.969505,7,pink primrose,Flowers
+0.0068493295,-19.660294,7,pink primrose,Flowers
+-0.22319843,-19.475685,7,pink primrose,Flowers
+0.6457795,-18.533098,7,pink primrose,Flowers
+0.58663404,-18.79246,7,pink primrose,Flowers
+1.3466221,-19.325615,7,pink primrose,Flowers
+-0.45023325,-18.885134,7,pink primrose,Flowers
+0.026982294,-19.06388,7,pink primrose,Flowers
+1.4219598,-19.371006,7,pink primrose,Flowers
+1.495957,-17.89625,7,pink primrose,Flowers
+-0.029935196,-17.767502,7,pink primrose,Flowers
+0.38241395,-18.27967,7,pink primrose,Flowers
+0.14218889,-18.327906,7,pink primrose,Flowers
+-0.3047951,-18.601856,7,pink primrose,Flowers
+1.4689068,-18.14412,7,pink primrose,Flowers
+21.051779,-15.652101,9,0 - zero,MNIST
+20.47589,-13.351445,9,0 - zero,MNIST
+20.784193,-13.799138,9,0 - zero,MNIST
+20.540684,-16.273476,9,0 - zero,MNIST
+20.251337,-14.313265,9,0 - zero,MNIST
+21.873175,-13.193568,9,0 - zero,MNIST
+19.001316,-15.198412,9,0 - zero,MNIST
+21.095545,-14.462148,9,0 - zero,MNIST
+19.698582,-14.478488,9,0 - zero,MNIST
+19.31269,-15.998691,9,0 - zero,MNIST
+21.62624,-12.522376,9,0 - zero,MNIST
+21.617424,-12.8018055,9,0 - zero,MNIST
+22.151278,-13.472236,9,0 - zero,MNIST
+20.722967,-14.711966,9,0 - zero,MNIST
+21.103397,-13.903929,9,0 - zero,MNIST
+20.529036,-12.960293,9,0 - zero,MNIST
+19.136486,-14.107105,9,0 - zero,MNIST
+21.954382,-12.182267,9,0 - zero,MNIST
+19.814484,-15.114889,9,0 - zero,MNIST
+18.792559,-15.98585,9,0 - zero,MNIST
+21.649893,-14.333991,9,0 - zero,MNIST
+20.13375,-13.848318,9,0 - zero,MNIST
+20.122835,-15.295478,9,0 - zero,MNIST
+18.787046,-14.861513,9,0 - zero,MNIST
+18.364939,-15.14941,9,0 - zero,MNIST
+21.667358,-14.887234,9,0 - zero,MNIST
+21.583267,-13.178466,9,0 - zero,MNIST
+17.829762,-15.99859,9,0 - zero,MNIST
+21.816206,-13.81652,9,0 - zero,MNIST
+22.151217,-14.604695,9,0 - zero,MNIST
+22.338648,-12.327308,9,0 - zero,MNIST
+19.065237,-15.584739,9,0 - zero,MNIST
+18.260504,-14.362563,9,0 - zero,MNIST
+20.64739,-14.757394,9,0 - zero,MNIST
+19.616419,-14.327392,9,0 - zero,MNIST
+20.933636,-15.578083,9,0 - zero,MNIST
+22.5533,-13.683635,9,0 - zero,MNIST
+22.63068,-11.895831,9,0 - zero,MNIST
+21.274353,-14.142494,9,0 - zero,MNIST
+21.178976,-12.87773,9,0 - zero,MNIST
+19.292898,-13.026039,9,0 - zero,MNIST
+22.680664,-12.889628,9,0 - zero,MNIST
+34.98535,12.650753,10,Abyssinian,OxfordPet
+35.810482,14.951624,10,Abyssinian,OxfordPet
+34.823006,14.755081,10,Abyssinian,OxfordPet
+36.544968,13.903494,10,Abyssinian,OxfordPet
+32.933796,18.369986,10,Abyssinian,OxfordPet
+30.321375,14.389839,10,Abyssinian,OxfordPet
+32.67722,20.746037,10,Abyssinian,OxfordPet
+33.756603,13.474893,10,Abyssinian,OxfordPet
+35.616367,13.214401,10,Abyssinian,OxfordPet
+35.509983,14.672007,10,Abyssinian,OxfordPet
+29.050634,15.196694,10,Abyssinian,OxfordPet
+34.907593,15.382499,10,Abyssinian,OxfordPet
+32.577454,18.968811,10,Abyssinian,OxfordPet
+35.517418,15.022616,10,Abyssinian,OxfordPet
+29.815819,16.1501,10,Abyssinian,OxfordPet
+29.822443,20.064486,10,Abyssinian,OxfordPet
+33.580338,13.7789345,10,Abyssinian,OxfordPet
+34.241413,13.995645,10,Abyssinian,OxfordPet
+34.400818,15.855869,10,Abyssinian,OxfordPet
+34.690556,15.972341,10,Abyssinian,OxfordPet
+29.670248,14.948508,10,Abyssinian,OxfordPet
+31.958624,19.747862,10,Abyssinian,OxfordPet
+34.862503,20.067883,10,Abyssinian,OxfordPet
+31.06345,21.219532,10,Abyssinian,OxfordPet
+36.000317,15.392993,10,Abyssinian,OxfordPet
+33.746933,21.257818,10,Abyssinian,OxfordPet
+33.804276,17.652098,10,Abyssinian,OxfordPet
+31.580791,15.741586,10,Abyssinian,OxfordPet
+35.179268,13.17249,10,Abyssinian,OxfordPet
+36.073563,16.060583,10,Abyssinian,OxfordPet
+35.118767,21.684832,10,Abyssinian,OxfordPet
+33.237755,17.548763,10,Abyssinian,OxfordPet
+31.6115,21.111305,10,Abyssinian,OxfordPet
+37.64403,17.130096,10,Abyssinian,OxfordPet
+35.62581,22.539263,10,Abyssinian,OxfordPet
+28.60281,17.386383,10,Abyssinian,OxfordPet
+31.212914,14.863625,10,Abyssinian,OxfordPet
+34.73773,21.77643,10,Abyssinian,OxfordPet
+35.908516,19.400434,10,Abyssinian,OxfordPet
+33.125694,17.282106,10,Abyssinian,OxfordPet
+34.22111,21.4916,10,Abyssinian,OxfordPet
+33.829784,21.694407,10,Abyssinian,OxfordPet
+36.0009,21.830534,10,Abyssinian,OxfordPet
+31.37626,16.283007,10,Abyssinian,OxfordPet
+33.294765,21.267239,10,Abyssinian,OxfordPet
+31.679684,16.846384,10,Abyssinian,OxfordPet
+31.796818,18.464863,10,Abyssinian,OxfordPet
+30.745453,16.115864,10,Abyssinian,OxfordPet
+33.69979,15.986108,10,Abyssinian,OxfordPet
+30.901432,17.72749,10,Abyssinian,OxfordPet
+30.480593,17.111414,10,Abyssinian,OxfordPet
+33.28141,18.310307,10,Abyssinian,OxfordPet
+33.98353,22.487875,10,Abyssinian,OxfordPet
+32.74682,13.095529,10,Abyssinian,OxfordPet
+30.888546,18.135681,10,Abyssinian,OxfordPet
+34.816322,18.199926,10,Abyssinian,OxfordPet
+30.870018,17.317259,10,Abyssinian,OxfordPet
+35.71655,20.193975,10,Abyssinian,OxfordPet
+30.631638,18.59299,10,Abyssinian,OxfordPet
+36.693108,19.27999,10,Abyssinian,OxfordPet
+34.442116,22.975012,10,Abyssinian,OxfordPet
+33.163578,21.420675,10,Abyssinian,OxfordPet
+35.12004,23.26813,10,Abyssinian,OxfordPet
+31.001009,17.82019,10,Abyssinian,OxfordPet
+32.659874,16.98971,10,Abyssinian,OxfordPet
+32.14709,18.027632,10,Abyssinian,OxfordPet
+31.125025,16.420813,10,Abyssinian,OxfordPet
+33.820065,23.75781,10,Abyssinian,OxfordPet
+32.03246,17.272991,10,Abyssinian,OxfordPet
+35.066208,22.840296,10,Abyssinian,OxfordPet
+32.798107,17.069778,10,Abyssinian,OxfordPet
+34.24936,13.199645,10,Abyssinian,OxfordPet
+37.71855,17.114513,10,Abyssinian,OxfordPet
+32.98275,15.860857,10,Abyssinian,OxfordPet
+33.14236,22.421701,10,Abyssinian,OxfordPet
+36.008774,19.371073,10,Abyssinian,OxfordPet
+32.779667,23.110407,10,Abyssinian,OxfordPet
+33.712032,21.17106,10,Abyssinian,OxfordPet
+32.954556,16.105064,10,Abyssinian,OxfordPet
+34.846786,19.713158,10,Abyssinian,OxfordPet
+35.777813,23.634342,10,Abyssinian,OxfordPet
+29.517887,18.45659,10,Abyssinian,OxfordPet
+32.110596,22.436035,10,Abyssinian,OxfordPet
+35.03274,18.318295,10,Abyssinian,OxfordPet
+32.781906,15.50615,10,Abyssinian,OxfordPet
+32.907272,15.039937,10,Abyssinian,OxfordPet
+32.34451,18.099627,10,Abyssinian,OxfordPet
+33.89825,17.238129,10,Abyssinian,OxfordPet
+35.039696,14.005625,10,Abyssinian,OxfordPet
+33.69571,15.049883,10,Abyssinian,OxfordPet
+32.302967,14.265905,10,Abyssinian,OxfordPet
+31.578518,13.0958,10,Abyssinian,OxfordPet
+32.18536,13.812554,10,Abyssinian,OxfordPet
+33.276928,12.600637,10,Abyssinian,OxfordPet
+33.164047,12.022478,10,Abyssinian,OxfordPet
+34.30598,17.296043,10,Abyssinian,OxfordPet
+33.77801,19.279716,10,Abyssinian,OxfordPet
+35.51304,23.358139,10,Abyssinian,OxfordPet
+-20.582392,-2.4793446,11,tench,ImageNet
+-30.117584,-3.7968905,11,tench,ImageNet
+-44.82774,-13.614113,11,tench,ImageNet
+-37.003204,-11.595335,11,tench,ImageNet
+-28.486052,-5.0485554,11,tench,ImageNet
+-29.091848,-2.9155593,11,tench,ImageNet
+-37.625954,-18.008638,11,tench,ImageNet
+-42.85864,-7.3148985,11,tench,ImageNet
+-43.572353,-8.32074,11,tench,ImageNet
+-41.232822,-6.306252,11,tench,ImageNet
+-16.569227,2.5641203,11,tench,ImageNet
+-37.837246,-8.097677,11,tench,ImageNet
+-36.093506,-14.913642,11,tench,ImageNet
+-34.52841,-11.339908,11,tench,ImageNet
+-43.558342,-7.9139643,11,tench,ImageNet
+-23.61831,-3.1570487,11,tench,ImageNet
+-27.551525,-2.5954726,11,tench,ImageNet
+-26.039576,-2.0264854,11,tench,ImageNet
+-38.374672,-12.57365,11,tench,ImageNet
+-38.828957,-9.672938,11,tench,ImageNet
+-32.202335,-9.491445,11,tench,ImageNet
+-26.698349,-0.67085695,11,tench,ImageNet
+-28.906836,-4.106407,11,tench,ImageNet
+-30.478437,-7.4975524,11,tench,ImageNet
+-37.975426,-12.403659,11,tench,ImageNet
+-44.846325,-9.483377,11,tench,ImageNet
+-28.744152,-0.0013332665,11,tench,ImageNet
+-23.66166,0.8750338,11,tench,ImageNet
+-26.96999,-6.3516417,11,tench,ImageNet
+-36.606674,-4.4137177,11,tench,ImageNet
+-26.575724,-2.4503388,11,tench,ImageNet
+-30.608742,-10.832705,11,tench,ImageNet
+-35.4392,-7.169863,11,tench,ImageNet
+-25.19617,-3.1685596,11,tench,ImageNet
+-27.978842,0.78774375,11,tench,ImageNet
+-31.097635,-1.1254339,11,tench,ImageNet
+-22.365335,0.006825948,11,tench,ImageNet
+-29.82321,-2.890767,11,tench,ImageNet
+-24.57348,-1.7366933,11,tench,ImageNet
+-41.074474,-12.826001,11,tench,ImageNet
+-36.458874,-9.409127,11,tench,ImageNet
+-38.3457,-16.708986,11,tench,ImageNet
+-43.640846,-12.793981,11,tench,ImageNet
+-39.914524,-15.832438,11,tench,ImageNet
+-38.23446,-11.21525,11,tench,ImageNet
+-35.859993,-11.203645,11,tench,ImageNet
+-27.396456,-4.6596894,11,tench,ImageNet
+-36.552917,-14.104325,11,tench,ImageNet
+-44.38772,-8.184405,11,tench,ImageNet
+-38.96241,-14.496702,11,tench,ImageNet
+-13.412362,-5.244111,12,stingray,ImageNetA
+-14.568689,-5.334491,12,stingray,ImageNetA
+-12.504982,-2.651265,12,stingray,ImageNetA
+-13.426966,-4.178851,12,stingray,ImageNetA
+-11.096571,-8.554383,12,stingray,ImageNetA
+-11.351423,-4.536946,12,stingray,ImageNetA
+-11.057983,-8.024515,12,stingray,ImageNetA
+-11.104652,-9.385884,12,stingray,ImageNetA
+-12.5427475,-2.6204286,12,stingray,ImageNetA
+-13.552431,-3.434589,12,stingray,ImageNetA
+-13.247275,-8.512448,12,stingray,ImageNetA
+-16.407257,-5.3525233,12,stingray,ImageNetA
+-10.8336315,-8.564101,12,stingray,ImageNetA
+-6.197077,-7.03332,12,stingray,ImageNetA
+-10.597499,-4.9386344,12,stingray,ImageNetA
+-7.1242385,-3.945639,12,stingray,ImageNetA
+-15.061806,-4.6610045,12,stingray,ImageNetA
+-7.7348285,-3.9521592,12,stingray,ImageNetA
+-13.657761,-3.6056936,12,stingray,ImageNetA
+-8.78704,-5.9836636,12,stingray,ImageNetA
+-7.541489,-4.081276,12,stingray,ImageNetA
+-10.227205,-1.0553709,12,stingray,ImageNetA
+-13.351822,-3.2813344,12,stingray,ImageNetA
+-10.14272,-2.1898088,12,stingray,ImageNetA
+-10.415994,-8.840522,12,stingray,ImageNetA
+-14.997748,-5.459368,12,stingray,ImageNetA
+-24.9316,-7.575179,12,stingray,ImageNetA
+-14.786081,-2.772946,12,stingray,ImageNetA
+-5.967091,-8.017127,12,stingray,ImageNetA
+-12.402394,-9.080348,12,stingray,ImageNetA
+-13.080362,-4.3854346,12,stingray,ImageNetA
+-9.235161,-4.8344073,12,stingray,ImageNetA
+-12.783878,-4.959727,12,stingray,ImageNetA
+-11.1968155,-3.8912313,12,stingray,ImageNetA
+-10.753687,-9.208064,12,stingray,ImageNetA
+-10.731948,-10.567242,12,stingray,ImageNetA
+-8.233942,-3.7169485,12,stingray,ImageNetA
+-15.199581,-5.1439805,12,stingray,ImageNetA
+-7.234348,-7.1333838,12,stingray,ImageNetA
+-5.8459306,-7.923179,12,stingray,ImageNetA
+-18.958996,-4.47709,12,stingray,ImageNetA
+-12.383611,-6.925821,12,stingray,ImageNetA
+-11.573361,-4.0125685,12,stingray,ImageNetA
+-14.403769,-8.950172,12,stingray,ImageNetA
+-15.835736,-8.878566,12,stingray,ImageNetA
+-11.318924,-4.4914513,12,stingray,ImageNetA
+-11.723741,-10.102578,12,stingray,ImageNetA
+-8.213592,-6.6277194,12,stingray,ImageNetA
+-12.434563,-6.975964,12,stingray,ImageNetA
+-10.685218,-8.344837,12,stingray,ImageNetA
+-7.4606433,-7.54793,12,stingray,ImageNetA
+-12.598543,-5.461011,12,stingray,ImageNetA
+-14.799045,-5.1201835,12,stingray,ImageNetA
+-12.815475,-7.549541,12,stingray,ImageNetA
+-12.203749,-9.921561,12,stingray,ImageNetA
+-10.101743,-9.495298,12,stingray,ImageNetA
+-10.643991,-8.672078,12,stingray,ImageNetA
+-7.848664,-8.105884,12,stingray,ImageNetA
+-7.3380647,-7.4293413,12,stingray,ImageNetA
+-15.180283,-8.908758,12,stingray,ImageNetA
+-5.901584,-7.8345504,12,stingray,ImageNetA
+-10.003293,-8.702484,12,stingray,ImageNetA
+-11.585985,-10.170355,12,stingray,ImageNetA
+-12.404678,-9.369596,12,stingray,ImageNetA
+-9.855695,-7.951253,12,stingray,ImageNetA
+-11.945664,-10.419484,12,stingray,ImageNetA
+-5.960395,-8.022052,12,stingray,ImageNetA
+-12.037928,-6.1763334,12,stingray,ImageNetA
+-10.874269,-6.922155,12,stingray,ImageNetA
+-6.007528,-7.737375,12,stingray,ImageNetA
+-7.9476767,-7.995634,12,stingray,ImageNetA
+-6.482401,-8.63113,12,stingray,ImageNetA
+-12.603549,-10.464579,12,stingray,ImageNetA
+-12.566373,-10.512052,12,stingray,ImageNetA
+-14.16216,-8.900078,12,stingray,ImageNetA
+-9.010223,-8.5455885,12,stingray,ImageNetA
+-2.115047,16.113258,13,goldfish,ImageNetR
+2.6859791,14.415297,13,goldfish,ImageNetR
+1.1607522,24.836895,13,goldfish,ImageNetR
+4.647234,22.386341,13,goldfish,ImageNetR
+9.008218,16.404272,13,goldfish,ImageNetR
+-8.055531,20.143509,13,goldfish,ImageNetR
+5.216468,9.425576,13,goldfish,ImageNetR
+5.2019277,19.999054,13,goldfish,ImageNetR
+-4.60629,15.04514,13,goldfish,ImageNetR
+-0.37194768,18.302727,13,goldfish,ImageNetR
+3.7876787,18.868395,13,goldfish,ImageNetR
+-3.122873,31.194658,13,goldfish,ImageNetR
+2.6304996,14.101078,13,goldfish,ImageNetR
+-1.9380268,25.639051,13,goldfish,ImageNetR
+-6.2731223,23.140715,13,goldfish,ImageNetR
+0.40576217,24.405233,13,goldfish,ImageNetR
+-5.5063367,22.762388,13,goldfish,ImageNetR
+-3.076501,24.710741,13,goldfish,ImageNetR
+-3.3890264,25.51688,13,goldfish,ImageNetR
+-0.13055958,25.043877,13,goldfish,ImageNetR
+-4.732043,22.301939,13,goldfish,ImageNetR
+-2.1782327,25.181667,13,goldfish,ImageNetR
+-5.6636014,26.280981,13,goldfish,ImageNetR
+0.92446053,17.574348,13,goldfish,ImageNetR
+-7.248849,12.213631,13,goldfish,ImageNetR
+4.753421,23.994234,13,goldfish,ImageNetR
+-6.5129857,22.515114,13,goldfish,ImageNetR
+1.0903549,10.17661,13,goldfish,ImageNetR
+-2.967002,13.780995,13,goldfish,ImageNetR
+0.15033282,24.217936,13,goldfish,ImageNetR
+0.60813195,19.860344,13,goldfish,ImageNetR
+-4.3034024,26.259203,13,goldfish,ImageNetR
+-6.0163856,17.967358,13,goldfish,ImageNetR
+4.3484035,15.392059,13,goldfish,ImageNetR
+-3.8322606,25.11648,13,goldfish,ImageNetR
+-3.3539817,24.442808,13,goldfish,ImageNetR
+-2.1781218,26.397388,13,goldfish,ImageNetR
+-2.5162501,23.563662,13,goldfish,ImageNetR
+6.213949,21.072315,13,goldfish,ImageNetR
+-3.9022593,26.771898,13,goldfish,ImageNetR
+-5.557119,24.163132,13,goldfish,ImageNetR
+-1.0759104,21.034027,13,goldfish,ImageNetR
+-3.5362494,26.928104,13,goldfish,ImageNetR
+-2.8228827,21.03157,13,goldfish,ImageNetR
+-4.5774913,26.537712,13,goldfish,ImageNetR
+-0.86841524,29.248518,13,goldfish,ImageNetR
+4.124695,23.538433,13,goldfish,ImageNetR
+3.6955676,11.70801,13,goldfish,ImageNetR
+9.680913,16.69101,13,goldfish,ImageNetR
+4.0241904,22.812977,13,goldfish,ImageNetR
+-1.7389696,24.966307,13,goldfish,ImageNetR
+3.5428178,24.581709,13,goldfish,ImageNetR
+8.528843,16.704786,13,goldfish,ImageNetR
+-2.278153,23.137226,13,goldfish,ImageNetR
+-4.156151,28.407585,13,goldfish,ImageNetR
+5.6419954,26.469097,13,goldfish,ImageNetR
+6.777786,27.257757,13,goldfish,ImageNetR
+8.129531,27.93786,13,goldfish,ImageNetR
+-5.555931,10.113126,13,goldfish,ImageNetR
+-4.779259,24.428026,13,goldfish,ImageNetR
+6.5271144,27.126072,13,goldfish,ImageNetR
+7.1863065,28.378384,13,goldfish,ImageNetR
+7.2783427,28.485302,13,goldfish,ImageNetR
+1.9198958,20.890583,13,goldfish,ImageNetR
+6.973166,26.935225,13,goldfish,ImageNetR
+7.5225,27.793674,13,goldfish,ImageNetR
+-3.5421193,23.620077,13,goldfish,ImageNetR
+7.223355,28.358202,13,goldfish,ImageNetR
+1.3169794,20.45757,13,goldfish,ImageNetR
+2.493415,31.3305,13,goldfish,ImageNetR
+-1.4696311,24.513882,13,goldfish,ImageNetR
+7.3407226,28.525702,13,goldfish,ImageNetR
+6.000353,12.872863,13,goldfish,ImageNetR
+3.7891243,14.087969,13,goldfish,ImageNetR
+5.328869,17.69103,13,goldfish,ImageNetR
+3.9079826,18.865322,13,goldfish,ImageNetR
+5.9322968,12.988313,13,goldfish,ImageNetR
+5.105184,14.359237,13,goldfish,ImageNetR
+4.1042256,14.012263,13,goldfish,ImageNetR
+5.0509744,13.296767,13,goldfish,ImageNetR
+6.8885655,21.036207,13,goldfish,ImageNetR
+-0.5115053,15.869588,13,goldfish,ImageNetR
+6.2435894,13.903912,13,goldfish,ImageNetR
+5.258521,14.077819,13,goldfish,ImageNetR
+-4.4741836,12.994524,13,goldfish,ImageNetR
+-3.5570548,17.280628,13,goldfish,ImageNetR
+-3.7412531,16.253323,13,goldfish,ImageNetR
+-2.8802717,16.652044,13,goldfish,ImageNetR
+-4.501114,18.437737,13,goldfish,ImageNetR
+-4.9833593,16.119904,13,goldfish,ImageNetR
+-4.440443,17.08642,13,goldfish,ImageNetR
+0.0131716,21.88947,13,goldfish,ImageNetR
+-3.7157722,16.640404,13,goldfish,ImageNetR
+-3.7237759,17.265434,13,goldfish,ImageNetR
+0.35788885,21.428614,13,goldfish,ImageNetR
+-0.5566133,21.846563,13,goldfish,ImageNetR
+-4.391455,15.698883,13,goldfish,ImageNetR
+-4.3555255,17.695967,13,goldfish,ImageNetR
+-3.0458024,17.542181,13,goldfish,ImageNetR
+0.7960815,21.572332,13,goldfish,ImageNetR
+-2.8066864,18.575603,13,goldfish,ImageNetR
+-5.2056017,16.049017,13,goldfish,ImageNetR
+-5.2402687,17.15114,13,goldfish,ImageNetR
+-3.6574643,17.151373,13,goldfish,ImageNetR
+-3.5907052,19.707378,13,goldfish,ImageNetR
+-5.6143374,16.353708,13,goldfish,ImageNetR
+-1.1065001,22.904419,13,goldfish,ImageNetR
+-8.596656,20.324759,13,goldfish,ImageNetR
+-0.7427718,10.724965,13,goldfish,ImageNetR
+1.4720576,22.79856,13,goldfish,ImageNetR
+-1.1265893,30.571898,13,goldfish,ImageNetR
+2.170929,13.583809,13,goldfish,ImageNetR
+3.033243,10.784242,13,goldfish,ImageNetR
+1.010545,10.5992,13,goldfish,ImageNetR
+1.401889,12.623289,13,goldfish,ImageNetR
+5.670838,21.107948,13,goldfish,ImageNetR
+5.7693224,19.746395,13,goldfish,ImageNetR
+0.62614053,12.788262,13,goldfish,ImageNetR
+-2.8963876,24.157461,13,goldfish,ImageNetR
+1.5304638,13.249118,13,goldfish,ImageNetR
+4.6931868,11.402205,13,goldfish,ImageNetR
+8.355573,11.492588,13,goldfish,ImageNetR
+8.524833,11.548719,13,goldfish,ImageNetR
+-0.031952746,23.07002,13,goldfish,ImageNetR
+9.355759,12.121622,13,goldfish,ImageNetR
+9.435363,11.342885,13,goldfish,ImageNetR
+9.513684,11.003157,13,goldfish,ImageNetR
+-0.17544638,10.567863,13,goldfish,ImageNetR
+9.317006,11.473324,13,goldfish,ImageNetR
+-0.9305912,25.959818,13,goldfish,ImageNetR
+8.988901,12.000884,13,goldfish,ImageNetR
+0.94138086,13.156103,13,goldfish,ImageNetR
+8.545139,9.735454,13,goldfish,ImageNetR
+9.111631,12.035614,13,goldfish,ImageNetR
+8.872095,11.510905,13,goldfish,ImageNetR
+-2.3105114,19.70995,13,goldfish,ImageNetR
+5.503407,17.8265,13,goldfish,ImageNetR
+3.3016114,20.080584,13,goldfish,ImageNetR
+3.4147944,18.572027,13,goldfish,ImageNetR
+1.5218706,18.696304,13,goldfish,ImageNetR
+7.8619843,14.661166,13,goldfish,ImageNetR
+-11.535326,30.619364,13,goldfish,ImageNetR
+5.842091,15.877262,13,goldfish,ImageNetR
+-0.5558856,19.237793,13,goldfish,ImageNetR
+0.8813641,17.568521,13,goldfish,ImageNetR
+4.4593635,21.240541,13,goldfish,ImageNetR
+2.2362843,20.394602,13,goldfish,ImageNetR
+2.470638,21.42666,13,goldfish,ImageNetR
+6.44457,22.319647,13,goldfish,ImageNetR
+1.3456352,24.783934,13,goldfish,ImageNetR
+2.521667,23.035414,13,goldfish,ImageNetR
+-1.6622508,17.30179,13,goldfish,ImageNetR
+1.7189744,22.073635,13,goldfish,ImageNetR
+-5.7181506,22.473488,13,goldfish,ImageNetR
+4.983351,19.097322,13,goldfish,ImageNetR
+2.0075464,23.341404,13,goldfish,ImageNetR
+2.916777,21.466463,13,goldfish,ImageNetR
+1.7613212,22.198717,13,goldfish,ImageNetR
+4.658413,20.540201,13,goldfish,ImageNetR
+2.8101258,19.57747,13,goldfish,ImageNetR
+3.8893974,21.316244,13,goldfish,ImageNetR
+-3.1066446,15.487712,13,goldfish,ImageNetR
+1.2651404,24.630705,13,goldfish,ImageNetR
+1.1938635,20.210806,13,goldfish,ImageNetR
+4.09891,23.250738,13,goldfish,ImageNetR
+2.333756,19.108791,13,goldfish,ImageNetR
+2.5644283,30.782734,13,goldfish,ImageNetR
+2.2134445,19.795849,13,goldfish,ImageNetR
+2.6326146,21.551878,13,goldfish,ImageNetR
+3.7894173,22.474688,13,goldfish,ImageNetR
+2.1663074,22.708168,13,goldfish,ImageNetR
+1.9695183,25.00252,13,goldfish,ImageNetR
+2.7214227,14.810463,13,goldfish,ImageNetR
+-0.43731168,18.618675,13,goldfish,ImageNetR
+9.982624,12.678148,13,goldfish,ImageNetR
+1.66703,15.637322,13,goldfish,ImageNetR
+2.3277469,17.840385,13,goldfish,ImageNetR
+3.024698,27.192463,13,goldfish,ImageNetR
+-1.1758864,27.491058,13,goldfish,ImageNetR
+-5.6994605,28.477772,13,goldfish,ImageNetR
+-5.518256,29.602757,13,goldfish,ImageNetR
+-0.03921924,27.552261,13,goldfish,ImageNetR
+0.38912705,27.628643,13,goldfish,ImageNetR
+-5.135557,30.355341,13,goldfish,ImageNetR
+1.3162929,27.719002,13,goldfish,ImageNetR
+-4.498225,29.211859,13,goldfish,ImageNetR
+2.178451,27.24154,13,goldfish,ImageNetR
+1.0860136,28.169218,13,goldfish,ImageNetR
+0.17839976,26.888092,13,goldfish,ImageNetR
+-5.44953,27.456823,13,goldfish,ImageNetR
+1.0102028,27.573572,13,goldfish,ImageNetR
+-1.0606529,27.419598,13,goldfish,ImageNetR
+-6.1911,29.943262,13,goldfish,ImageNetR
+0.32272398,28.19552,13,goldfish,ImageNetR
+-5.0067067,29.389975,13,goldfish,ImageNetR
+-5.3493314,29.52051,13,goldfish,ImageNetR
+-0.80942434,27.542023,13,goldfish,ImageNetR
+2.5777986,19.146612,13,goldfish,ImageNetR
+3.4150968,18.366661,13,goldfish,ImageNetR
+4.3229184,9.314783,13,goldfish,ImageNetR
+3.4917018,9.636754,13,goldfish,ImageNetR
+2.9184964,12.362145,13,goldfish,ImageNetR
+1.9137404,9.950921,13,goldfish,ImageNetR
+4.186891,10.594718,13,goldfish,ImageNetR
+4.6695085,12.081231,13,goldfish,ImageNetR
+4.120897,11.214551,13,goldfish,ImageNetR
+5.712032,11.619887,13,goldfish,ImageNetR
+4.2519674,10.441532,13,goldfish,ImageNetR
+4.603026,11.244074,13,goldfish,ImageNetR
+5.285446,11.6611395,13,goldfish,ImageNetR
+-5.282507,7.785921,13,goldfish,ImageNetR
+5.560528,10.728263,13,goldfish,ImageNetR
+5.1473064,10.625901,13,goldfish,ImageNetR
+4.3283772,10.232453,13,goldfish,ImageNetR
+-3.7219977,9.061965,13,goldfish,ImageNetR
+3.1316426,8.226785,13,goldfish,ImageNetR
+-8.05984,24.420631,13,goldfish,ImageNetR
+-8.134162,26.044466,13,goldfish,ImageNetR
+10.606845,24.207108,13,goldfish,ImageNetR
+-4.26297,23.615095,13,goldfish,ImageNetR
+-6.2527013,28.69693,13,goldfish,ImageNetR
+-6.70396,26.804016,13,goldfish,ImageNetR
+-3.101913,31.38159,13,goldfish,ImageNetR
+-4.093463,30.13696,13,goldfish,ImageNetR
+-5.0141263,25.51668,13,goldfish,ImageNetR
+-6.5453258,25.156418,13,goldfish,ImageNetR
+-9.045455,12.748481,13,goldfish,ImageNetR
+-7.562954,27.457973,13,goldfish,ImageNetR
+-7.240791,27.633837,13,goldfish,ImageNetR
+-8.241821,26.02526,13,goldfish,ImageNetR
+-1.7452533,29.199608,14,tench,ImageNetSketch
+-6.621344,33.520092,14,tench,ImageNetSketch
+-8.16546,36.243214,14,tench,ImageNetSketch
+-8.502093,32.505547,14,tench,ImageNetSketch
+-8.524805,34.675983,14,tench,ImageNetSketch
+-9.030324,33.44273,14,tench,ImageNetSketch
+-5.9445057,32.036045,14,tench,ImageNetSketch
+-11.397065,31.489542,14,tench,ImageNetSketch
+-7.359591,34.065216,14,tench,ImageNetSketch
+-11.272515,32.80992,14,tench,ImageNetSketch
+-1.9659091,29.525335,14,tench,ImageNetSketch
+-2.3130107,33.31405,14,tench,ImageNetSketch
+-9.996429,34.07472,14,tench,ImageNetSketch
+-7.427557,35.046013,14,tench,ImageNetSketch
+-6.044357,35.604145,14,tench,ImageNetSketch
+-8.936484,32.07992,14,tench,ImageNetSketch
+-6.0104265,35.19501,14,tench,ImageNetSketch
+-7.053699,34.051685,14,tench,ImageNetSketch
+-6.5664477,31.267433,14,tench,ImageNetSketch
+-9.542128,32.55384,14,tench,ImageNetSketch
+-7.2176185,33.54918,14,tench,ImageNetSketch
+0.08741161,29.972437,14,tench,ImageNetSketch
+-8.718004,34.89906,14,tench,ImageNetSketch
+-7.8268847,33.66443,14,tench,ImageNetSketch
+-9.51872,31.29984,14,tench,ImageNetSketch
+-10.072465,33.834114,14,tench,ImageNetSketch
+-6.8631806,35.85471,14,tench,ImageNetSketch
+-7.639771,34.83256,14,tench,ImageNetSketch
+-5.5434046,35.012978,14,tench,ImageNetSketch
+0.9773799,29.289343,14,tench,ImageNetSketch
+-6.2975397,29.721663,14,tench,ImageNetSketch
+-5.8059015,30.680723,14,tench,ImageNetSketch
+-0.28941324,29.021212,14,tench,ImageNetSketch
+-8.519581,35.473106,14,tench,ImageNetSketch
+-8.923689,32.735428,14,tench,ImageNetSketch
+-8.869614,32.221684,14,tench,ImageNetSketch
+-6.2918577,33.14624,14,tench,ImageNetSketch
+-4.754786,35.257877,14,tench,ImageNetSketch
+-7.462811,34.972298,14,tench,ImageNetSketch
+0.32695222,30.898817,14,tench,ImageNetSketch
+-9.163897,35.206947,14,tench,ImageNetSketch
+-7.3260503,29.857687,14,tench,ImageNetSketch
+-7.489712,33.140114,14,tench,ImageNetSketch
+-8.105088,32.167763,14,tench,ImageNetSketch
+-1.7975976,29.243965,14,tench,ImageNetSketch
+-9.705198,32.521835,14,tench,ImageNetSketch
+-6.7335725,33.495953,14,tench,ImageNetSketch
+-7.545884,35.39815,14,tench,ImageNetSketch
+-7.413791,32.89968,14,tench,ImageNetSketch
+-7.00377,32.903152,14,tench,ImageNetSketch
+-0.19788222,28.897802,14,tench,ImageNetSketch
+-35.375046,-17.486229,15,tench,ImageNetSM
+-33.521492,-14.058138,15,tench,ImageNetSM
+-27.918177,-2.6277256,15,tench,ImageNetSM
+-43.519444,-11.434259,15,tench,ImageNetSM
+-34.743935,-18.437767,15,tench,ImageNetSM
+-43.42827,-11.383117,15,tench,ImageNetSM
+-36.076015,-15.700969,15,tench,ImageNetSM
+-39.74484,-17.226078,15,tench,ImageNetSM
+-44.65037,-11.701772,15,tench,ImageNetSM
+-39.711056,-10.741403,15,tench,ImageNetSM
+-25.725235,0.5218506,15,tench,ImageNetSM
+-37.4911,-15.124036,15,tench,ImageNetSM
+-35.49939,-9.690004,15,tench,ImageNetSM
+-33.556427,-15.754207,15,tench,ImageNetSM
+-33.101322,-13.828017,15,tench,ImageNetSM
+-39.206047,-13.666909,15,tench,ImageNetSM
+-34.538185,-16.717009,15,tench,ImageNetSM
+-26.595976,-3.254465,15,tench,ImageNetSM
+-24.716862,-0.7484702,15,tench,ImageNetSM
+-25.980259,-4.051424,15,tench,ImageNetSM
+-30.522728,-11.86691,15,tench,ImageNetSM
+-38.528873,-10.103393,15,tench,ImageNetSM
+-20.341928,2.4258313,15,tench,ImageNetSM
+-11.409546,3.4619591,15,tench,ImageNetSM
+-40.08663,-8.05868,15,tench,ImageNetSM
+-45.011982,-11.229781,15,tench,ImageNetSM
+-36.27255,-12.448122,15,tench,ImageNetSM
+-37.35788,-16.148338,15,tench,ImageNetSM
+-24.960203,-4.7772946,15,tench,ImageNetSM
+-27.988174,-2.141715,15,tench,ImageNetSM
+-31.047426,-3.339985,15,tench,ImageNetSM
+-34.23935,-9.602379,15,tench,ImageNetSM
+-37.034027,-13.350921,15,tench,ImageNetSM
+-41.185078,-6.3577743,15,tench,ImageNetSM
+-13.59065,4.47869,15,tench,ImageNetSM
+-24.86435,-4.187291,15,tench,ImageNetSM
+-39.84037,-8.107439,15,tench,ImageNetSM
+-45.01595,-13.081551,15,tench,ImageNetSM
+-22.304792,-3.9974735,15,tench,ImageNetSM
+-30.83321,-12.617646,15,tench,ImageNetSM
+-35.18693,-14.099053,15,tench,ImageNetSM
+-28.208351,-0.88879806,15,tench,ImageNetSM
+-23.642159,-4.42902,15,tench,ImageNetSM
+-32.969315,-15.189705,15,tench,ImageNetSM
+-38.02429,-15.020915,15,tench,ImageNetSM
+-42.91436,-15.065145,15,tench,ImageNetSM
+-33.776432,-15.071248,15,tench,ImageNetSM
+-41.7217,-12.319254,15,tench,ImageNetSM
+-34.182163,-11.994039,15,tench,ImageNetSM
+-41.21887,-10.514556,15,tench,ImageNetSM
+-41.805397,-8.129393,15,tench,ImageNetSM
+-25.723501,-1.2844961,15,tench,ImageNetSM
+-27.17912,1.0960857,15,tench,ImageNetSM
+-28.74962,-1.6411656,15,tench,ImageNetSM
+-42.668583,-11.0855665,15,tench,ImageNetSM
+-27.460035,-6.8150935,15,tench,ImageNetSM
+-26.10748,-3.8519127,15,tench,ImageNetSM
+-40.37355,-11.397813,15,tench,ImageNetSM
+-27.76014,-3.5028555,15,tench,ImageNetSM
+-29.21646,-1.7640132,15,tench,ImageNetSM
+-36.68982,-18.075373,15,tench,ImageNetSM
+-8.482279,33.16168,15,tench,ImageNetSM
+-43.048943,-13.74406,15,tench,ImageNetSM
+-33.094707,-16.793476,15,tench,ImageNetSM
+-33.680855,-17.251661,15,tench,ImageNetSM
+-43.19303,-14.71352,15,tench,ImageNetSM
+-37.083485,-12.34611,15,tench,ImageNetSM
+-38.37616,-15.594013,15,tench,ImageNetSM
+-34.145885,-13.104015,15,tench,ImageNetSM
+-23.839542,0.71445596,15,tench,ImageNetSM
+-25.81708,-5.1183333,15,tench,ImageNetSM
+-40.67839,-7.545171,15,tench,ImageNetSM
+-36.016212,-17.080564,15,tench,ImageNetSM
+-32.838,-12.009209,15,tench,ImageNetSM
+-40.317547,-16.844023,15,tench,ImageNetSM
+-35.3514,-15.160022,15,tench,ImageNetSM
+1.9943728,9.929033,15,tench,ImageNetSM
+-39.968426,-12.029775,15,tench,ImageNetSM
+-36.601097,-15.301697,15,tench,ImageNetSM
+-35.424168,-12.534021,15,tench,ImageNetSM
+-26.36445,-1.4540545,15,tench,ImageNetSM
+-34.296795,-14.680623,15,tench,ImageNetSM
+-35.3502,-17.249414,15,tench,ImageNetSM
+-43.97042,-11.865072,15,tench,ImageNetSM
+-37.386024,-11.040242,15,tench,ImageNetSM
+-35.44708,-16.38114,15,tench,ImageNetSM
+-36.3407,-11.257691,15,tench,ImageNetSM
+-27.502827,-1.471288,15,tench,ImageNetSM
+-13.141999,4.580909,15,tench,ImageNetSM
+-41.75545,-7.6980586,15,tench,ImageNetSM
+-35.335922,-18.142292,15,tench,ImageNetSM
+-36.529076,-16.456692,15,tench,ImageNetSM
+-41.7068,-8.192939,15,tench,ImageNetSM
+-36.135704,-9.8273535,15,tench,ImageNetSM
+-39.802826,-11.849101,15,tench,ImageNetSM
+-43.526424,-13.517273,15,tench,ImageNetSM
+-37.644615,-14.316853,15,tench,ImageNetSM
+-25.236582,-1.2460423,15,tench,ImageNetSM
+-35.75104,-18.799107,15,tench,ImageNetSM
+-36.56443,-10.141281,15,tench,ImageNetSM
+-20.582811,-2.4793484,16,tench,ImageNetSC
+-30.11762,-3.796871,16,tench,ImageNetSC
+-44.82774,-13.614113,16,tench,ImageNetSC
+-37.003204,-11.595335,16,tench,ImageNetSC
+-28.485472,-5.0493317,16,tench,ImageNetSC
+-29.091806,-2.9155326,16,tench,ImageNetSC
+-37.6257,-18.0087,16,tench,ImageNetSC
+-42.858643,-7.314888,16,tench,ImageNetSC
+-43.57238,-8.320739,16,tench,ImageNetSC
+-41.232628,-6.3062525,16,tench,ImageNetSC
+-16.569227,2.5641203,16,tench,ImageNetSC
+-37.837498,-8.097675,16,tench,ImageNetSC
+-36.093506,-14.913642,16,tench,ImageNetSC
+-34.52841,-11.339908,16,tench,ImageNetSC
+-43.55828,-7.9136243,16,tench,ImageNetSC
+-23.618404,-3.1570592,16,tench,ImageNetSC
+-27.551609,-2.5952208,16,tench,ImageNetSC
+-26.039576,-2.0264854,16,tench,ImageNetSC
+-38.374035,-12.573708,16,tench,ImageNetSC
+-38.82932,-9.6729965,16,tench,ImageNetSC
+-32.20227,-9.491247,16,tench,ImageNetSC
+-26.698132,-0.6707308,16,tench,ImageNetSC
+-28.906824,-4.1063933,16,tench,ImageNetSC
+-30.47836,-7.49754,16,tench,ImageNetSC
+-37.975426,-12.403659,16,tench,ImageNetSC
+-44.847046,-9.483946,16,tench,ImageNetSC
+-28.744068,-0.0012954519,16,tench,ImageNetSC
+-23.66166,0.8750338,16,tench,ImageNetSC
+-26.96999,-6.3516417,16,tench,ImageNetSC
+-36.606674,-4.4137177,16,tench,ImageNetSC
+-26.575722,-2.4503334,16,tench,ImageNetSC
+-30.60873,-10.832883,16,tench,ImageNetSC
+-35.43927,-7.1698413,16,tench,ImageNetSC
+-25.19617,-3.1685596,16,tench,ImageNetSC
+-27.97872,0.78759426,16,tench,ImageNetSC
+-31.096788,-1.1254766,16,tench,ImageNetSC
+-22.365335,0.006825948,16,tench,ImageNetSC
+-29.823551,-2.8910441,16,tench,ImageNetSC
+-24.575432,-1.7365643,16,tench,ImageNetSC
+-41.076057,-12.826002,16,tench,ImageNetSC
+-36.458874,-9.409127,16,tench,ImageNetSC
+-38.3457,-16.708986,16,tench,ImageNetSC
+-43.640846,-12.793981,16,tench,ImageNetSC
+-39.914635,-15.832484,16,tench,ImageNetSC
+-38.23446,-11.21525,16,tench,ImageNetSC
+-35.859913,-11.203555,16,tench,ImageNetSC
+-27.39635,-4.659919,16,tench,ImageNetSC
+-36.552917,-14.104325,16,tench,ImageNetSC
+-44.38772,-8.184405,16,tench,ImageNetSC
+-38.96241,-14.496702,16,tench,ImageNetSC
+-1.6371855,21.894567,17,goldfish,ImageNetSC
+-6.6180115,6.622092,17,goldfish,ImageNetSC
+-7.763087,5.688625,17,goldfish,ImageNetSC
+-8.889603,5.8840966,17,goldfish,ImageNetSC
+-8.481214,9.9621935,17,goldfish,ImageNetSC
+-8.362814,7.627299,17,goldfish,ImageNetSC
+-10.378131,7.299174,17,goldfish,ImageNetSC
+-7.174977,4.6370335,17,goldfish,ImageNetSC
+-8.866443,0.4985124,17,goldfish,ImageNetSC
+-6.9648504,2.0991213,17,goldfish,ImageNetSC
+-8.979642,3.8502343,17,goldfish,ImageNetSC
+-9.126249,3.6324918,17,goldfish,ImageNetSC
+-7.004242,8.132064,17,goldfish,ImageNetSC
+-8.15132,6.2382655,17,goldfish,ImageNetSC
+-7.972836,9.541077,17,goldfish,ImageNetSC
+-8.771962,5.981194,17,goldfish,ImageNetSC
+-8.859845,8.567201,17,goldfish,ImageNetSC
+-7.454877,1.3727174,17,goldfish,ImageNetSC
+-8.678196,9.991991,17,goldfish,ImageNetSC
+-8.482032,3.0579317,17,goldfish,ImageNetSC
+-8.025937,2.8234973,17,goldfish,ImageNetSC
+-7.9193625,6.4494066,17,goldfish,ImageNetSC
+-7.568818,1.8494225,17,goldfish,ImageNetSC
+-8.751879,1.086192,17,goldfish,ImageNetSC
+-8.024071,7.2285566,17,goldfish,ImageNetSC
+-9.214841,7.0990434,17,goldfish,ImageNetSC
+-7.686998,2.2887812,17,goldfish,ImageNetSC
+-7.2633505,2.0189157,17,goldfish,ImageNetSC
+-10.439898,7.421551,17,goldfish,ImageNetSC
+-7.3906674,6.5593996,17,goldfish,ImageNetSC
+-8.155762,8.83619,17,goldfish,ImageNetSC
+-8.821319,7.837788,17,goldfish,ImageNetSC
+-6.8658314,5.13482,17,goldfish,ImageNetSC
+-7.1025844,4.991378,17,goldfish,ImageNetSC
+-9.041584,7.630821,17,goldfish,ImageNetSC
+-8.382065,6.5941687,17,goldfish,ImageNetSC
+-10.7287655,4.1988053,17,goldfish,ImageNetSC
+-3.342316,8.884217,17,goldfish,ImageNetSC
+-9.456423,9.637208,17,goldfish,ImageNetSC
+-7.705745,1.6627996,17,goldfish,ImageNetSC
+-8.644116,4.484084,17,goldfish,ImageNetSC
+-10.091906,-2.087106,17,goldfish,ImageNetSC
+-8.893851,6.723933,17,goldfish,ImageNetSC
+-10.613661,5.6115437,17,goldfish,ImageNetSC
+-7.7766476,7.691504,17,goldfish,ImageNetSC
+-8.50096,6.6618714,17,goldfish,ImageNetSC
+-5.9672384,2.8067229,17,goldfish,ImageNetSC
+-7.9146476,7.4616113,17,goldfish,ImageNetSC
+-10.298685,6.966542,17,goldfish,ImageNetSC
+-6.6188946,5.632154,17,goldfish,ImageNetSC
+-37.322914,-13.848592,18,tench,ImageNetV2
+-34.498024,-10.713925,18,tench,ImageNetV2
+-25.6495,-6.7321706,18,tench,ImageNetV2
+-39.95467,-10.235141,18,tench,ImageNetV2
+-24.521753,-2.61693,18,tench,ImageNetV2
+-28.423784,-4.5593424,18,tench,ImageNetV2
+-37.271767,-13.6997175,18,tench,ImageNetV2
+-28.1651,-4.4088345,18,tench,ImageNetV2
+-11.560025,31.277456,18,tench,ImageNetV2
+-26.871916,-4.567259,18,tench,ImageNetV2
+-8.062754,5.6316605,19,goldfish,ImageNetV2
+-9.364122,5.411211,19,goldfish,ImageNetV2
+4.289032,13.042059,19,goldfish,ImageNetV2
+-10.077044,6.0175643,19,goldfish,ImageNetV2
+-7.814473,8.223527,19,goldfish,ImageNetV2
+-10.123957,6.5543065,19,goldfish,ImageNetV2
+-10.9380245,6.7556934,19,goldfish,ImageNetV2
+-7.2271147,3.132376,19,goldfish,ImageNetV2
+-7.3943853,3.74553,19,goldfish,ImageNetV2
+-10.2135105,7.9474277,19,goldfish,ImageNetV2
