@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 
 const API = "http://localhost:8000";
 
-// Fixed sequential order that matches the training progression
 const STEPS = ["Base", "DTD", "MNIST", "EuroSAT", "Flowers"];
 const SLIDER_MAX = (STEPS.length - 1) * 100; // 400
 
@@ -83,16 +82,52 @@ function drawCanvas(canvas, fromData, toData, t, bounds) {
     }
 }
 
-export default function TSNETransition({ className }) {
-    const [methods, setMethods]         = useState([]);
-    const [selectedMethod, setMethod]   = useState(null);
-    const [csvs, setCsvs]               = useState([]); // [base, dtd, mnist, eurosat, flowers]
-    const [loading, setLoading]         = useState(false);
-    const [sliderValue, setSliderValue] = useState(0);
-    const [snapEnabled, setSnapEnabled] = useState(true);
+// ── Per-method canvas ─────────────────────────────────────────────────
+function MethodCanvas({ method, csvs, sliderValue, bounds, loading }) {
+    const canvasRef = useRef(null);
 
-    const canvasRef  = useRef(null);
-    const csvCache   = useRef({});
+    const totalT   = csvs.length > 1 ? (sliderValue / SLIDER_MAX) * (STEPS.length - 1) : 0;
+    const segment  = Math.min(Math.floor(totalT), STEPS.length - 2);
+    const interpT  = totalT - segment;
+    const fromData = csvs[segment]     ?? null;
+    const toData   = csvs[segment + 1] ?? null;
+
+    useEffect(() => {
+        if (canvasRef.current)
+            drawCanvas(canvasRef.current, fromData, toData, interpT, bounds);
+    }, [fromData, toData, interpT, bounds]);
+
+    return (
+        <div className="relative aspect-square w-full">
+            <canvas
+                ref={canvasRef}
+                width={640}
+                height={640}
+                className="w-full h-full rounded-lg border border-[var(--color-honeydew)]/20"
+            />
+            {loading && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40">
+                    <span className="text-sm text-[var(--color-honeydew)]/60">Loading…</span>
+                </div>
+            )}
+            <div className="absolute top-2 left-3 text-xs capitalize text-[var(--color-honeydew)]/70 bg-black/50 px-2 py-0.5 rounded">
+                {method}
+            </div>
+        </div>
+    );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────
+export default function TSNETransition({ className }) {
+    const [methods, setMethods]           = useState([]);
+    const [selected, setSelected]         = useState([]);
+    const [csvsByMethod, setCsvsByMethod] = useState({});
+    const [loadingSet, setLoadingSet]     = useState(new Set());
+    const [sliderValue, setSliderValue]   = useState(0);
+    const [snapEnabled, setSnapEnabled]   = useState(true);
+
+    const csvCache    = useRef({});
+    const loadTrigged = useRef(new Set());
 
     async function loadCsvData(path) {
         if (csvCache.current[path]) return csvCache.current[path];
@@ -109,43 +144,38 @@ export default function TSNETransition({ className }) {
             .catch(() => {});
     }, []);
 
-    // When method changes: load base + all 4 ordered files for that method
+    // Kick off loading for any newly selected method
     useEffect(() => {
-        if (!selectedMethod) return;
-        setLoading(true);
-        setCsvs([]);
-        setSliderValue(0);
+        for (const m of selected) {
+            if (loadTrigged.current.has(m)) continue;
+            loadTrigged.current.add(m);
+            setLoadingSet(prev => new Set([...prev, m]));
 
-        fetch(`${API}/tsne-csv/${selectedMethod}/list`)
-            .then(r => r.json())
-            .then(async ({ files }) => {
-                // files are already sorted: 1_dtd, 2_mnist, 3_eurosat, 4_flowers
-                const paths = ["base", ...files.map(f => `${selectedMethod}/${f}`)];
-                const datasets = await Promise.all(paths.map(loadCsvData));
-                setCsvs(datasets);
-                setLoading(false);
-            })
-            .catch(() => setLoading(false));
-    }, [selectedMethod]);
+            fetch(`${API}/tsne-csv/${m}/list`)
+                .then(r => r.json())
+                .then(async ({ files }) => {
+                    const paths = ["base", ...files.map(f => `${m}/${f}`)];
+                    const datasets = await Promise.all(paths.map(loadCsvData));
+                    setCsvsByMethod(prev => ({ ...prev, [m]: datasets }));
+                    setLoadingSet(prev => { const s = new Set(prev); s.delete(m); return s; });
+                })
+                .catch(() => {
+                    loadTrigged.current.delete(m);
+                    setLoadingSet(prev => { const s = new Set(prev); s.delete(m); return s; });
+                });
+        }
+    }, [selected]);
 
-    // Stable bounds computed once from all steps combined
+    function toggleMethod(m) {
+        setSelected(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
+    }
+
+    // Stable bounds from all currently selected methods combined
     const bounds = useMemo(() => {
-        if (csvs.length < 2) return null;
-        return computeBounds(csvs);
-    }, [csvs]);
-
-    // Map slider (0–400) to segment index + interpolation t
-    // totalT: 0→4 covering the 5 steps
-    const totalT   = csvs.length > 1 ? (sliderValue / SLIDER_MAX) * (STEPS.length - 1) : 0;
-    const segment  = Math.min(Math.floor(totalT), STEPS.length - 2); // 0–3
-    const interpT  = totalT - segment;                                 // 0–1 within segment
-    const fromData = csvs[segment]     ?? null;
-    const toData   = csvs[segment + 1] ?? null;
-
-    useEffect(() => {
-        if (canvasRef.current)
-            drawCanvas(canvasRef.current, fromData, toData, interpT, bounds);
-    }, [fromData, toData, interpT, bounds]);
+        const allCsvs = selected.flatMap(m => csvsByMethod[m] ?? []);
+        if (allCsvs.length === 0) return null;
+        return computeBounds(allCsvs);
+    }, [selected, csvsByMethod]);
 
     function applySnap(raw) {
         if (!snapEnabled) return raw;
@@ -153,8 +183,11 @@ export default function TSNETransition({ className }) {
         return Math.abs(raw - nearest) <= 12 ? nearest : raw;
     }
 
-    // Which step label to highlight: the one closest to the slider
     const nearestStep = Math.round(sliderValue / 100);
+    const anyLoaded   = selected.some(m => (csvsByMethod[m]?.length ?? 0) >= 2);
+
+    // Grid: 1 column for 1 method, 2 for 2+
+    const gridCols = selected.length === 1 ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))";
 
     return (
         <div className={`${className} flex flex-col items-center gap-6 pt-10 px-8 pb-12`}>
@@ -165,32 +198,35 @@ export default function TSNETransition({ className }) {
                 <SectionDivider label="Method" />
                 <div className="flex gap-2 flex-wrap justify-center">
                     {methods.map(m => (
-                        <button key={m} className={btnCls(selectedMethod === m)} onClick={() => setMethod(m)}>
+                        <button key={m} className={btnCls(selected.includes(m))} onClick={() => toggleMethod(m)}>
                             {m}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* ── Canvas ────────────────────────────────────────────── */}
-            <div className="relative w-full max-w-2xl aspect-square">
-                <canvas
-                    ref={canvasRef}
-                    width={640}
-                    height={640}
-                    className="w-full h-full rounded-lg border border-[var(--color-honeydew)]/20"
-                />
-                {loading && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/40">
-                        <span className="text-sm text-[var(--color-honeydew)]/60">Loading…</span>
-                    </div>
-                )}
-                {!selectedMethod && !loading && (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-lg">
-                        <span className="text-sm text-[var(--color-honeydew)]/30">Select a method above</span>
-                    </div>
-                )}
-            </div>
+            {/* ── Canvas grid ───────────────────────────────────────── */}
+            {selected.length > 0 ? (
+                <div
+                    className="w-full max-w-5xl"
+                    style={{ display: "grid", gridTemplateColumns: gridCols, gap: "1rem" }}
+                >
+                    {selected.map(m => (
+                        <MethodCanvas
+                            key={m}
+                            method={m}
+                            csvs={csvsByMethod[m] ?? []}
+                            sliderValue={sliderValue}
+                            bounds={bounds}
+                            loading={loadingSet.has(m)}
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="w-full max-w-2xl aspect-square flex items-center justify-center rounded-lg border border-[var(--color-honeydew)]/10">
+                    <span className="text-sm text-[var(--color-honeydew)]/30">Select a method above</span>
+                </div>
+            )}
 
             {/* ── Slider + step labels ──────────────────────────────── */}
             <div className="w-full max-w-2xl flex flex-col gap-2">
@@ -215,25 +251,19 @@ export default function TSNETransition({ className }) {
                         onChange={e => setSliderValue(applySnap(Number(e.target.value)))}
                         onMouseUp={e => setSliderValue(Math.round(Number(e.target.value) / 100) * 100)}
                         onTouchEnd={e => setSliderValue(Math.round(Number(e.target.value) / 100) * 100)}
-                        disabled={csvs.length < 2}
+                        disabled={!anyLoaded}
                         className="w-full accent-[var(--color-magenta)] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                     />
                     {[1, 2, 3].map(i => {
-                        // Range thumb (16px wide) doesn't travel the full element width.
-                        // Thumb centre at fraction f sits at: f*W + (0.5 - f)*thumbWidth
-                        // so we offset the naive % by (0.5 - f) * thumbWidth px.
                         const frac = i / (STEPS.length - 1);
                         return (
-                            <div
-                                key={i}
-                                style={{
-                                    position: 'absolute',
-                                    left: `calc(${frac * 100}% + ${(0.5 - frac) * 16}px)`,
-                                    top: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    pointerEvents: 'none',
-                                }}
-                            >
+                            <div key={i} style={{
+                                position: "absolute",
+                                left: `calc(${frac * 100}% + ${(0.5 - frac) * 16}px)`,
+                                top: "50%",
+                                transform: "translate(-50%, -50%)",
+                                pointerEvents: "none",
+                            }}>
                                 <div className="w-px h-3 bg-[var(--color-honeydew)]/35 rounded-full" />
                             </div>
                         );
@@ -244,7 +274,7 @@ export default function TSNETransition({ className }) {
                         <button
                             key={label}
                             onClick={() => setSliderValue(i * 100)}
-                            disabled={csvs.length < 2}
+                            disabled={!anyLoaded}
                             className={`text-xs transition duration-200 disabled:cursor-not-allowed ${
                                 i === nearestStep
                                     ? "text-[var(--color-magenta)] font-bold"
