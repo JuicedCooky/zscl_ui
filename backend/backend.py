@@ -216,6 +216,50 @@ def getTsneCsvFile(method: str, filename: str):
         return {"error": "File not found"}
     return parse_tsne_csv(path)
 
+tsne_csv_3d_dir = os.path.join(base_path, "tsne_csv_3d")
+
+def parse_tsne_csv_3d(path: str):
+    rows = []
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = _csv.DictReader(f)
+        for row in reader:
+            rows.append({
+                "x": float(row["x"]),
+                "y": float(row["y"]),
+                "z": float(row["z"]),
+                "label": int(row["label"]),
+                "classname": row["classname"],
+                "dataset": row["dataset"],
+            })
+    return rows
+
+@app.get("/tsne-csv-3d/methods")
+def getTsneCsv3dMethods():
+    methods = sorted([d for d in os.listdir(tsne_csv_3d_dir) if os.path.isdir(os.path.join(tsne_csv_3d_dir, d))])
+    return {"methods": methods}
+
+@app.get("/tsne-csv-3d/base")
+def getTsneCsv3dBase():
+    return parse_tsne_csv_3d(os.path.join(tsne_csv_3d_dir, "base_tsne.csv"))
+
+@app.get("/tsne-csv-3d/{method}/list")
+def listTsneCsv3dFiles(method: str):
+    if ".." in method:
+        return {"error": "Invalid path"}
+    method_dir = os.path.join(tsne_csv_3d_dir, method)
+    if not os.path.isdir(method_dir):
+        return {"error": "Method not found"}
+    return {"files": sorted(f for f in os.listdir(method_dir) if f.endswith(".csv"))}
+
+@app.get("/tsne-csv-3d/{method}/{filename}")
+def getTsneCsv3dFile(method: str, filename: str):
+    if ".." in method or ".." in filename:
+        return {"error": "Invalid path"}
+    path = os.path.join(tsne_csv_3d_dir, method, filename)
+    if not os.path.isfile(path):
+        return {"error": "File not found"}
+    return parse_tsne_csv_3d(path)
+
 @app.get("/")
 def default():
     return FileResponse(os.path.join(frontend_path, "dist/index.html"))

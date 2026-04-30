@@ -12,8 +12,10 @@ import { IoMdBook } from "react-icons/io";
 import { IoLayers } from "react-icons/io5";
 import { IoStatsChart } from "react-icons/io5";
 import { IoSwapHorizontal } from "react-icons/io5";
+import { IoCubeOutline } from "react-icons/io5";
 import TSNE from './pages/TSNE.jsx'
 import TSNETransition from './pages/TSNETransition.jsx'
+import TSNETransition3D from './pages/TSNETransition3D.jsx'
 
 
 function App() {
@@ -97,6 +99,21 @@ function App() {
           </NavLink>
 
           <NavLink
+            to="/tsne-transition-3d"
+            className={({ isActive }) =>
+              `p-3 rounded-lg transition duration-300 flex flex-col items-center gap-1 ${
+                isActive
+                  ? 'bg-[var(--color-magenta)]/60 text-[var(--color-honeydew)]'
+                  : 'hover:bg-[var(--color-magenta)]/30 text-[var(--color-honeydew)]/70'
+              }`
+            }
+            title="3D t-SNE"
+          >
+            <IoCubeOutline className="text-2xl" />
+            <span className="text-xs">3D</span>
+          </NavLink>
+
+          <NavLink
             to="/about"
             className={({ isActive }) =>
               `p-3 rounded-lg transition duration-300 flex flex-col items-center gap-1 ${
@@ -120,6 +137,7 @@ function App() {
             <Route path="/results" element={<Results className="relative z-10" />} />
             <Route path="/tsne" element={<TSNE className="relative z-10" />} />
             <Route path="/tsne-transition" element={<TSNETransition className="relative z-10" />} />
+            <Route path="/tsne-transition-3d" element={<TSNETransition3D className="relative z-10" />} />
             <Route path="/about" element={<About className="relative z-10" />} />
           </Routes>
         </div>
