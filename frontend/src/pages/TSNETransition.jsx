@@ -85,6 +85,7 @@ function drawCanvas(canvas, fromData, toData, t, bounds) {
 // ── Per-method canvas ─────────────────────────────────────────────────
 function MethodCanvas({ method, csvs, sliderValue, bounds, loading }) {
     const canvasRef = useRef(null);
+    const [tooltip, setTooltip] = useState(null);
 
     const totalT   = csvs.length > 1 ? (sliderValue / SLIDER_MAX) * (STEPS.length - 1) : 0;
     const segment  = Math.min(Math.floor(totalT), STEPS.length - 2);
@@ -97,8 +98,51 @@ function MethodCanvas({ method, csvs, sliderValue, bounds, loading }) {
             drawCanvas(canvasRef.current, fromData, toData, interpT, bounds);
     }, [fromData, toData, interpT, bounds]);
 
+    function handleMouseMove(e) {
+        const canvas = canvasRef.current;
+        if (!canvas || !fromData || !toData || !bounds) { setTooltip(null); return; }
+
+        const rect = canvas.getBoundingClientRect();
+        const sx = canvas.width / rect.width;
+        const sy = canvas.height / rect.height;
+        const mx = (e.clientX - rect.left) * sx;
+        const my = (e.clientY - rect.top)  * sy;
+
+        const { xMin, xMax, yMin, yMax } = bounds;
+        const pad = 28, W = canvas.width, H = canvas.height;
+        const rangeX = xMax - xMin || 1, rangeY = yMax - yMin || 1;
+        const scale = Math.min((W - 2*pad) / rangeX, (H - 2*pad) / rangeY);
+        const offX = pad + ((W - 2*pad) - scale * rangeX) / 2;
+        const offY = pad + ((H - 2*pad) - scale * rangeY) / 2;
+
+        const n = Math.min(fromData.length, toData.length);
+        let bestDist = Infinity, bestPt = null;
+        for (let i = 0; i < n; i++) {
+            const a = fromData[i], b = toData[i];
+            const px = offX + (a.x + interpT * (b.x - a.x) - xMin) * scale;
+            const py = offY + (a.y + interpT * (b.y - a.y) - yMin) * scale;
+            const d = (mx - px) ** 2 + (my - py) ** 2;
+            if (d < bestDist) { bestDist = d; bestPt = a; }
+        }
+
+        if (bestPt && Math.sqrt(bestDist) < 20) {
+            setTooltip({
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top,
+                dataset: bestPt.dataset,
+                classname: bestPt.classname ?? null,
+            });
+        } else {
+            setTooltip(null);
+        }
+    }
+
     return (
-        <div className="relative aspect-square w-full">
+        <div
+            className="relative aspect-square w-full"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setTooltip(null)}
+        >
             <canvas
                 ref={canvasRef}
                 width={640}
@@ -113,6 +157,15 @@ function MethodCanvas({ method, csvs, sliderValue, bounds, loading }) {
             <div className="absolute top-2 left-3 text-xs capitalize text-[var(--color-honeydew)]/70 bg-black/50 px-2 py-0.5 rounded">
                 {method}
             </div>
+            {tooltip && (
+                <div
+                    className="absolute z-10 bg-black/80 border border-[var(--color-honeydew)]/30 rounded px-2 py-1 text-xs text-[var(--color-honeydew)] whitespace-nowrap pointer-events-none"
+                    style={{ left: tooltip.x + 12, top: tooltip.y - 8 }}
+                >
+                    <div className="font-semibold">{tooltip.dataset}</div>
+                    {tooltip.classname && <div className="text-[var(--color-honeydew)]/60">{tooltip.classname}</div>}
+                </div>
+            )}
         </div>
     );
 }
@@ -125,9 +178,14 @@ export default function TSNETransition({ className }) {
     const [loadingSet, setLoadingSet]     = useState(new Set());
     const [sliderValue, setSliderValue]   = useState(0);
     const [snapEnabled, setSnapEnabled]   = useState(true);
+    const [isPlaying, setIsPlaying]       = useState(false);
+    const [speed, setSpeed]               = useState("1");
 
     const csvCache    = useRef({});
     const loadTrigged = useRef(new Set());
+    const rafRef      = useRef(null);
+    const lastTimeRef = useRef(null);
+    const playingRef  = useRef(false);
 
     async function loadCsvData(path) {
         if (csvCache.current[path]) return csvCache.current[path];
@@ -169,6 +227,43 @@ export default function TSNETransition({ className }) {
     function toggleMethod(m) {
         setSelected(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
     }
+
+    function togglePlay() {
+        if (playingRef.current) {
+            playingRef.current = false;
+            setIsPlaying(false);
+        } else {
+            if (sliderValue >= SLIDER_MAX) setSliderValue(0);
+            playingRef.current = true;
+            setIsPlaying(true);
+        }
+    }
+
+    useEffect(() => {
+        if (!isPlaying) return;
+        lastTimeRef.current = null;
+        const spd = Math.max(0.01, parseFloat(speed) || 1);
+
+        function tick(now) {
+            if (!playingRef.current) return;
+            if (lastTimeRef.current === null) lastTimeRef.current = now;
+            const dt = now - lastTimeRef.current;
+            lastTimeRef.current = now;
+            setSliderValue(prev => {
+                const next = prev + (dt / 1000) * spd * 100;
+                if (next >= SLIDER_MAX) {
+                    playingRef.current = false;
+                    setIsPlaying(false);
+                    return SLIDER_MAX;
+                }
+                return next;
+            });
+            if (playingRef.current) rafRef.current = requestAnimationFrame(tick);
+        }
+
+        rafRef.current = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(rafRef.current);
+    }, [isPlaying, speed]);
 
     // Stable bounds from all currently selected methods combined
     const bounds = useMemo(() => {
@@ -230,7 +325,28 @@ export default function TSNETransition({ className }) {
 
             {/* ── Slider + step labels ──────────────────────────────── */}
             <div className="w-full max-w-2xl flex flex-col gap-2">
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={togglePlay}
+                            disabled={!anyLoaded}
+                            className={`px-3 py-1.5 text-xs rounded-md border transition duration-300 ${
+                                isPlaying
+                                    ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/40 text-[var(--color-honeydew)]"
+                                    : "bg-white/10 border-[var(--color-honeydew)]/20 text-[var(--color-honeydew)]/70 hover:bg-[var(--color-magenta)]/30"
+                            } disabled:opacity-30 disabled:cursor-not-allowed`}
+                        >
+                            {isPlaying ? "⏸ Pause" : "▶ Play"}
+                        </button>
+                        <input
+                            type="text"
+                            value={speed}
+                            onChange={e => setSpeed(e.target.value)}
+                            placeholder="1"
+                            className="w-14 px-2 py-1.5 text-xs rounded-md border bg-white/10 border-[var(--color-honeydew)]/20 text-[var(--color-honeydew)] text-center outline-none focus:border-[var(--color-honeydew)]/50"
+                        />
+                        <span className="text-xs text-[var(--color-honeydew)]/40">steps/s</span>
+                    </div>
                     <button
                         onClick={() => setSnapEnabled(s => !s)}
                         className={`px-3 py-1.5 text-xs rounded-md border transition duration-300 ${
