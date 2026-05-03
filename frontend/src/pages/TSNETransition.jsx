@@ -55,7 +55,7 @@ function computeBounds(csvList) {
     return { xMin, xMax, yMin, yMax };
 }
 
-function drawCanvas(canvas, fromData, toData, t, bounds) {
+function drawCanvas(canvas, fromData, toData, t, bounds, splitPos, baseData) {
     const ctx = canvas.getContext("2d");
     const W = canvas.width, H = canvas.height;
     ctx.fillStyle = "#0f0f1a";
@@ -70,21 +70,40 @@ function drawCanvas(canvas, fromData, toData, t, bounds) {
     const offX = pad + ((W - 2 * pad) - scale * rangeX) / 2;
     const offY = pad + ((H - 2 * pad) - scale * rangeY) / 2;
 
-    const n = Math.min(fromData.length, toData.length);
-    for (let i = 0; i < n; i++) {
-        const a = fromData[i], b = toData[i];
-        const cx = offX + (a.x + t * (b.x - a.x) - xMin) * scale;
-        const cy = offY + (a.y + t * (b.y - a.y) - yMin) * scale;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = DATASET_COLORS[a.dataset] ?? "#ffffff";
-        ctx.fill();
+    function drawPts(fromPts, toPts, interp) {
+        const n = Math.min(fromPts.length, toPts.length);
+        for (let i = 0; i < n; i++) {
+            const a = fromPts[i], b = toPts[i];
+            const cx = offX + (a.x + interp * (b.x - a.x) - xMin) * scale;
+            const cy = offY + (a.y + interp * (b.y - a.y) - yMin) * scale;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+            ctx.fillStyle = DATASET_COLORS[a.dataset] ?? "#ffffff";
+            ctx.fill();
+        }
+    }
+
+    const splitX = (splitPos / 100) * W;
+
+    if (splitPos > 0 && baseData) {
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, 0, splitX, H); ctx.clip();
+        drawPts(baseData, baseData, 0);
+        ctx.restore();
+    }
+    if (splitPos < 100) {
+        ctx.save();
+        ctx.beginPath(); ctx.rect(splitX, 0, W - splitX, H); ctx.clip();
+        drawPts(fromData, toData, t);
+        ctx.restore();
     }
 }
 
 // ── Per-method canvas ─────────────────────────────────────────────────
-function MethodCanvas({ method, csvs, sliderValue, bounds, loading }) {
-    const canvasRef = useRef(null);
+function MethodCanvas({ method, csvs, sliderValue, bounds, loading, splitPos, onSplitChange }) {
+    const canvasRef    = useRef(null);
+    const containerRef = useRef(null);
+    const isDraggingRef = useRef(false);
     const [tooltip, setTooltip] = useState(null);
 
     const totalT   = csvs.length > 1 ? (sliderValue / SLIDER_MAX) * (STEPS.length - 1) : 0;
@@ -92,15 +111,25 @@ function MethodCanvas({ method, csvs, sliderValue, bounds, loading }) {
     const interpT  = totalT - segment;
     const fromData = csvs[segment]     ?? null;
     const toData   = csvs[segment + 1] ?? null;
+    const baseData = csvs[0]           ?? null;
 
     useEffect(() => {
         if (canvasRef.current)
-            drawCanvas(canvasRef.current, fromData, toData, interpT, bounds);
-    }, [fromData, toData, interpT, bounds]);
+            drawCanvas(canvasRef.current, fromData, toData, interpT, bounds, splitPos, baseData);
+    }, [fromData, toData, interpT, bounds, splitPos, baseData]);
 
     function handleMouseMove(e) {
         const canvas = canvasRef.current;
-        if (!canvas || !fromData || !toData || !bounds) { setTooltip(null); return; }
+        if (!canvas) return;
+
+        if (isDraggingRef.current) {
+            const rect = canvas.getBoundingClientRect();
+            const newPos = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+            onSplitChange?.(newPos);
+            return;
+        }
+
+        if (!bounds) { setTooltip(null); return; }
 
         const rect = canvas.getBoundingClientRect();
         const sx = canvas.width / rect.width;
@@ -115,33 +144,42 @@ function MethodCanvas({ method, csvs, sliderValue, bounds, loading }) {
         const offX = pad + ((W - 2*pad) - scale * rangeX) / 2;
         const offY = pad + ((H - 2*pad) - scale * rangeY) / 2;
 
-        const n = Math.min(fromData.length, toData.length);
+        const splitX   = (splitPos / 100) * W;
+        const inLeft   = splitPos > 0 && mx < splitX;
+        const searchFrom = inLeft ? (baseData ?? []) : (fromData ?? []);
+        const searchTo   = inLeft ? (baseData ?? []) : (toData   ?? []);
+        const searchT    = inLeft ? 0 : interpT;
+        if (!searchFrom.length) { setTooltip(null); return; }
+
+        const n = Math.min(searchFrom.length, searchTo.length);
         let bestDist = Infinity, bestPt = null;
         for (let i = 0; i < n; i++) {
-            const a = fromData[i], b = toData[i];
-            const px = offX + (a.x + interpT * (b.x - a.x) - xMin) * scale;
-            const py = offY + (a.y + interpT * (b.y - a.y) - yMin) * scale;
+            const a = searchFrom[i], b = searchTo[i];
+            const px = offX + (a.x + searchT * (b.x - a.x) - xMin) * scale;
+            const py = offY + (a.y + searchT * (b.y - a.y) - yMin) * scale;
             const d = (mx - px) ** 2 + (my - py) ** 2;
             if (d < bestDist) { bestDist = d; bestPt = a; }
         }
 
         if (bestPt && Math.sqrt(bestDist) < 20) {
-            setTooltip({
-                x: e.clientX - rect.left,
-                y: e.clientY - rect.top,
-                dataset: bestPt.dataset,
-                classname: bestPt.classname ?? null,
-            });
+            setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top, dataset: bestPt.dataset, classname: bestPt.classname ?? null });
         } else {
             setTooltip(null);
         }
     }
 
+    function stopDrag() {
+        isDraggingRef.current = false;
+        if (containerRef.current) containerRef.current.style.cursor = '';
+    }
+
     return (
         <div
+            ref={containerRef}
             className="relative aspect-square w-full"
             onMouseMove={handleMouseMove}
-            onMouseLeave={() => setTooltip(null)}
+            onMouseLeave={() => { stopDrag(); setTooltip(null); }}
+            onMouseUp={stopDrag}
         >
             <canvas
                 ref={canvasRef}
@@ -157,6 +195,36 @@ function MethodCanvas({ method, csvs, sliderValue, bounds, loading }) {
             <div className="absolute top-2 left-3 text-xs capitalize text-[var(--color-honeydew)]/70 bg-black/50 px-2 py-0.5 rounded">
                 {method}
             </div>
+            {splitPos > 0 && splitPos < 100 && (
+                <>
+                    {/* dashed divider line */}
+                    <div
+                        className="absolute top-0 bottom-0 pointer-events-none"
+                        style={{ left: `${splitPos}%`, transform: 'translateX(-50%)', borderLeft: '1.5px dashed rgba(255,255,255,0.35)', zIndex: 10 }}
+                    />
+                    {/* drag handle */}
+                    <div
+                        onMouseDown={e => { e.preventDefault(); isDraggingRef.current = true; if (containerRef.current) containerRef.current.style.cursor = 'ew-resize'; }}
+                        style={{
+                            position: 'absolute',
+                            left: `${splitPos}%`,
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            width: 18,
+                            height: 18,
+                            borderRadius: '50%',
+                            background: 'rgba(255,255,255,0.78)',
+                            border: '2px solid rgba(200,200,255,0.6)',
+                            cursor: 'ew-resize',
+                            zIndex: 20,
+                            boxShadow: '0 1px 5px rgba(0,0,0,0.55)',
+                        }}
+                    />
+                    <div className="absolute bottom-2 pointer-events-none text-[10px] text-[var(--color-honeydew)]/40" style={{ left: `calc(${splitPos / 2}%)` }}>Base</div>
+                    <div className="absolute bottom-2 pointer-events-none text-[10px] text-[var(--color-honeydew)]/40" style={{ right: `calc(${(100 - splitPos) / 2}%)` }}>Current</div>
+                </>
+            )}
+            {splitPos === 100 && <div className="absolute bottom-2 left-2 text-[10px] text-[var(--color-honeydew)]/40 pointer-events-none">Base</div>}
             {tooltip && (
                 <div
                     className="absolute z-10 bg-black/80 border border-[var(--color-honeydew)]/30 rounded px-2 py-1 text-xs text-[var(--color-honeydew)] whitespace-nowrap pointer-events-none"
@@ -178,6 +246,7 @@ export default function TSNETransition({ className }) {
     const [loadingSet, setLoadingSet]     = useState(new Set());
     const [sliderValue, setSliderValue]   = useState(0);
     const [snapEnabled, setSnapEnabled]   = useState(true);
+    const [splitPos, setSplitPos]         = useState(0);
     const [isPlaying, setIsPlaying]       = useState(false);
     const [speed, setSpeed]               = useState("1");
 
@@ -314,6 +383,8 @@ export default function TSNETransition({ className }) {
                             sliderValue={sliderValue}
                             bounds={bounds}
                             loading={loadingSet.has(m)}
+                            splitPos={splitPos}
+                            onSplitChange={setSplitPos}
                         />
                     ))}
                 </div>
@@ -347,16 +418,24 @@ export default function TSNETransition({ className }) {
                         />
                         <span className="text-xs text-[var(--color-honeydew)]/40">steps/s</span>
                     </div>
-                    <button
-                        onClick={() => setSnapEnabled(s => !s)}
-                        className={`px-3 py-1.5 text-xs rounded-md border transition duration-300 ${
-                            snapEnabled
-                                ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/40 text-[var(--color-honeydew)]"
-                                : "bg-white/10 border-[var(--color-honeydew)]/20 text-[var(--color-honeydew)]/70 hover:bg-[var(--color-magenta)]/30"
-                        }`}
-                    >
-                        Snap {snapEnabled ? "On" : "Off"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setSplitPos(p => p > 0 ? 0 : 50)}
+                            className={btnCls(splitPos > 0)}
+                        >
+                            Base {splitPos > 0 ? "On" : "Off"}
+                        </button>
+                        <button
+                            onClick={() => setSnapEnabled(s => !s)}
+                            className={`px-3 py-1.5 text-xs rounded-md border transition duration-300 ${
+                                snapEnabled
+                                    ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/40 text-[var(--color-honeydew)]"
+                                    : "bg-white/10 border-[var(--color-honeydew)]/20 text-[var(--color-honeydew)]/70 hover:bg-[var(--color-magenta)]/30"
+                            }`}
+                        >
+                            Snap {snapEnabled ? "On" : "Off"}
+                        </button>
+                    </div>
                 </div>
                 <div className="relative w-full">
                     <input

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
@@ -67,57 +67,106 @@ function btnCls(active) {
 // ── Three.js scatter plot (runs inside Canvas) ────────────────────────
 const SCENE_HALF = 15;
 
-function AxisPlanes() {
+function CameraSync({ sharedRef, canvasId }) {
+    const { camera } = useThree();
+    const controlsRef = useRef();
+    const isActiveRef = useRef(false);
+
+    useFrame(() => {
+        if (!controlsRef.current) return;
+        if (isActiveRef.current) {
+            sharedRef.current = {
+                position: camera.position.clone(),
+                target: controlsRef.current.target.clone(),
+                sourceId: canvasId,
+            };
+        } else if (sharedRef.current && sharedRef.current.sourceId !== canvasId) {
+            camera.position.copy(sharedRef.current.position);
+            controlsRef.current.target.copy(sharedRef.current.target);
+        }
+    });
+
+    return (
+        <OrbitControls
+            ref={controlsRef}
+            makeDefault
+            enableDamping
+            dampingFactor={0.08}
+            onStart={() => { isActiveRef.current = true; }}
+            onEnd={() => { isActiveRef.current = false; }}
+        />
+    );
+}
+
+function AxisPlanes({ opacity = 1 }) {
     const size = SCENE_HALF * 2;
     const divs = 20;
+    const r0 = useRef(), r1 = useRef(), r2 = useRef();
+    useEffect(() => {
+        for (const r of [r0, r1, r2]) {
+            if (!r.current) continue;
+            r.current.material.transparent = opacity < 1;
+            r.current.material.opacity = opacity;
+            r.current.material.needsUpdate = true;
+        }
+    }, [opacity]);
     return (
         <>
-            <gridHelper args={[size, divs, "#444466", "#222244"]} />
-            <gridHelper args={[size, divs, "#444466", "#222244"]} rotation={[Math.PI / 2, 0, 0]} />
-            <gridHelper args={[size, divs, "#444466", "#222244"]} rotation={[0, 0, Math.PI / 2]} />
+            <gridHelper ref={r0} args={[size, divs, "#444466", "#222244"]} />
+            <gridHelper ref={r1} args={[size, divs, "#444466", "#222244"]} rotation={[Math.PI / 2, 0, 0]} />
+            <gridHelper ref={r2} args={[size, divs, "#444466", "#222244"]} rotation={[0, 0, Math.PI / 2]} />
         </>
     );
 }
 
+function SceneAxes({ size, opacity = 1 }) {
+    const ref = useRef();
+    useEffect(() => {
+        if (!ref.current) return;
+        ref.current.material.transparent = opacity < 1;
+        ref.current.material.opacity = opacity;
+        ref.current.material.needsUpdate = true;
+    }, [opacity]);
+    return <axesHelper ref={ref} args={[size]} />;
+}
+
+function buildGeometry(pts, from, to, t, bounds) {
+    const n = Math.min(from.length, to.length);
+    const { xMin, xMax, yMin, yMax, zMin, zMax } = bounds;
+    const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2, cz = (zMin + zMax) / 2;
+    const maxRange = Math.max(xMax - xMin, yMax - yMin, zMax - zMin) || 1;
+    const scale = (2 * SCENE_HALF) / maxRange;
+    const positions = new Float32Array(n * 3);
+    const colors    = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+        const a = from[i], b = to[i];
+        positions[i * 3]     = (a.x + t * (b.x - a.x) - cx) * scale;
+        positions[i * 3 + 1] = (a.y + t * (b.y - a.y) - cy) * scale;
+        positions[i * 3 + 2] = (a.z + t * (b.z - a.z) - cz) * scale;
+        const c = hexToRgb(DATASET_COLORS[a.dataset] ?? "#ffffff");
+        colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+    }
+    pts.geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    pts.geometry.setAttribute("color",    new THREE.BufferAttribute(colors, 3));
+    pts.geometry.computeBoundingSphere();
+}
+
 function ScatterPoints({ csvs, sliderValue, bounds, onHover }) {
-    const pointsRef = useRef();
-    const fromRef   = useRef(null);
-    const lastIdx   = useRef(-1);
+    const ptsRef  = useRef();
+    const fromRef = useRef(null);
+    const lastIdx = useRef(-1);
 
     useEffect(() => {
-        const pts = pointsRef.current;
+        const pts = ptsRef.current;
         if (!pts || !csvs || csvs.length < 2 || !bounds) return;
-
         const totalT  = (sliderValue / SLIDER_MAX) * (STEPS.length - 1);
         const segment = Math.min(Math.floor(totalT), STEPS.length - 2);
         const t       = totalT - segment;
         const from    = csvs[segment];
         const to      = csvs[segment + 1];
         if (!from || !to) return;
-
         fromRef.current = from;
-
-        const n = Math.min(from.length, to.length);
-        const { xMin, xMax, yMin, yMax, zMin, zMax } = bounds;
-        const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2, cz = (zMin + zMax) / 2;
-        const maxRange = Math.max(xMax - xMin, yMax - yMin, zMax - zMin) || 1;
-        const scale = (2 * SCENE_HALF) / maxRange;
-
-        const positions = new Float32Array(n * 3);
-        const colors    = new Float32Array(n * 3);
-
-        for (let i = 0; i < n; i++) {
-            const a = from[i], b = to[i];
-            positions[i * 3]     = (a.x + t * (b.x - a.x) - cx) * scale;
-            positions[i * 3 + 1] = (a.y + t * (b.y - a.y) - cy) * scale;
-            positions[i * 3 + 2] = (a.z + t * (b.z - a.z) - cz) * scale;
-            const c = hexToRgb(DATASET_COLORS[a.dataset] ?? "#ffffff");
-            colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
-        }
-
-        pts.geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-        pts.geometry.setAttribute("color",    new THREE.BufferAttribute(colors, 3));
-        pts.geometry.computeBoundingSphere();
+        buildGeometry(pts, from, to, t, bounds);
     }, [csvs, sliderValue, bounds]);
 
     function handlePointerMove(e) {
@@ -139,7 +188,24 @@ function ScatterPoints({ csvs, sliderValue, bounds, onHover }) {
     }
 
     return (
-        <points ref={pointsRef} onPointerMove={handlePointerMove} onPointerOut={handlePointerOut}>
+        <points ref={ptsRef} onPointerMove={handlePointerMove} onPointerOut={handlePointerOut}>
+            <bufferGeometry />
+            <pointsMaterial size={0.12} vertexColors sizeAttenuation />
+        </points>
+    );
+}
+
+function BasePoints({ baseData, bounds }) {
+    const ptsRef = useRef();
+
+    useEffect(() => {
+        const pts = ptsRef.current;
+        if (!pts || !baseData || !bounds) return;
+        buildGeometry(pts, baseData, baseData, 0, bounds);
+    }, [baseData, bounds]);
+
+    return (
+        <points ref={ptsRef}>
             <bufferGeometry />
             <pointsMaterial size={0.12} vertexColors sizeAttenuation />
         </points>
@@ -147,7 +213,7 @@ function ScatterPoints({ csvs, sliderValue, bounds, onHover }) {
 }
 
 // ── Per-method 3D canvas ──────────────────────────────────────────────
-function MethodCanvas3D({ method, csvs, sliderValue, bounds, loading, showAxes, showPlane }) {
+function MethodCanvas3D({ method, csvs, sliderValue, bounds, loading, showAxes, showPlane, axesOpacity, planeOpacity, sharedCameraRef }) {
     const containerRef = useRef(null);
     const [tooltip, setTooltip] = useState(null);
 
@@ -170,9 +236,9 @@ function MethodCanvas3D({ method, csvs, sliderValue, bounds, loading, showAxes, 
                 onCreated={({ raycaster }) => { raycaster.params.Points.threshold = 0.5; }}
             >
                 <ScatterPoints csvs={csvs} sliderValue={sliderValue} bounds={bounds} onHover={handleHover} />
-                {showAxes && <axesHelper args={[SCENE_HALF]} />}
-                {showPlane && <AxisPlanes />}
-                <OrbitControls makeDefault enableDamping dampingFactor={0.08} />
+                {showAxes && <SceneAxes size={SCENE_HALF} opacity={axesOpacity} />}
+                {showPlane && <AxisPlanes opacity={planeOpacity} />}
+                <CameraSync sharedRef={sharedCameraRef} canvasId={method} />
             </Canvas>
             {loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
@@ -198,6 +264,26 @@ function MethodCanvas3D({ method, csvs, sliderValue, bounds, loading, showAxes, 
     );
 }
 
+// ── Standalone base canvas ────────────────────────────────────────────
+function BaseCanvas3D({ baseData, bounds, showAxes, showPlane, axesOpacity, planeOpacity, sharedCameraRef }) {
+    return (
+        <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-[var(--color-honeydew)]/30 border-dashed">
+            <Canvas camera={{ position: [0, 0, 40], fov: 60 }} style={{ background: "#0f0f1a" }}>
+                <BasePoints baseData={baseData} bounds={bounds} />
+                {showAxes && <SceneAxes size={SCENE_HALF} opacity={axesOpacity} />}
+                {showPlane && <AxisPlanes opacity={planeOpacity} />}
+                <CameraSync sharedRef={sharedCameraRef} canvasId="__base__" />
+            </Canvas>
+            <div className="absolute top-2 left-3 text-xs text-[var(--color-honeydew)]/70 bg-black/50 px-2 py-0.5 rounded pointer-events-none">
+                Base
+            </div>
+            <div className="absolute bottom-2 right-3 text-[10px] text-[var(--color-honeydew)]/25 pointer-events-none">
+                drag · scroll · right-drag pan
+            </div>
+        </div>
+    );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────
 export default function TSNETransition3D({ className }) {
     const [methods, setMethods]           = useState([]);
@@ -208,14 +294,18 @@ export default function TSNETransition3D({ className }) {
     const [snapEnabled, setSnapEnabled]   = useState(true);
     const [showAxes, setShowAxes]         = useState(true);
     const [showPlane, setShowPlane]       = useState(true);
+    const [axesOpacity, setAxesOpacity]   = useState(1);
+    const [planeOpacity, setPlaneOpacity] = useState(1);
+    const [showBase, setShowBase]         = useState(false);
     const [isPlaying, setIsPlaying]       = useState(false);
     const [speed, setSpeed]               = useState("1");
 
-    const csvCache    = useRef({});
-    const loadTrigged = useRef(new Set());
-    const rafRef      = useRef(null);
-    const lastTimeRef = useRef(null);
-    const playingRef  = useRef(false);
+    const csvCache       = useRef({});
+    const loadTrigged    = useRef(new Set());
+    const rafRef         = useRef(null);
+    const lastTimeRef    = useRef(null);
+    const playingRef     = useRef(false);
+    const sharedCameraRef = useRef(null);
 
     async function loadCsvData(path) {
         if (csvCache.current[path]) return csvCache.current[path];
@@ -302,15 +392,24 @@ export default function TSNETransition3D({ className }) {
         return computeBounds3D(allCsvs);
     }, [selected, csvsByMethod]);
 
+    const baseData = useMemo(() => {
+        for (const m of selected) {
+            const c = csvsByMethod[m];
+            if (c && c[0]) return c[0];
+        }
+        return null;
+    }, [selected, csvsByMethod]);
+
     function applySnap(raw) {
         if (!snapEnabled) return raw;
         const nearest = Math.round(raw / 100) * 100;
         return Math.abs(raw - nearest) <= 12 ? nearest : raw;
     }
 
-    const nearestStep = Math.round(sliderValue / 100);
-    const anyLoaded   = selected.some(m => (csvsByMethod[m]?.length ?? 0) >= 2);
-    const gridCols    = selected.length === 1 ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))";
+    const nearestStep   = Math.round(sliderValue / 100);
+    const anyLoaded     = selected.some(m => (csvsByMethod[m]?.length ?? 0) >= 2);
+    const totalCanvases = selected.length + (showBase && baseData ? 1 : 0);
+    const gridCols      = totalCanvases === 1 ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))";
 
     return (
         <div className={`${className} flex flex-col items-center gap-6 pt-10 px-8 pb-12`}>
@@ -334,6 +433,17 @@ export default function TSNETransition3D({ className }) {
                     className="w-full max-w-5xl"
                     style={{ display: "grid", gridTemplateColumns: gridCols, gap: "1rem" }}
                 >
+                    {showBase && baseData && (
+                        <BaseCanvas3D
+                            baseData={baseData}
+                            bounds={bounds}
+                            showAxes={showAxes}
+                            showPlane={showPlane}
+                            axesOpacity={axesOpacity}
+                            planeOpacity={planeOpacity}
+                            sharedCameraRef={sharedCameraRef}
+                        />
+                    )}
                     {selected.map(m => (
                         <MethodCanvas3D
                             key={m}
@@ -344,6 +454,9 @@ export default function TSNETransition3D({ className }) {
                             loading={loadingSet.has(m)}
                             showAxes={showAxes}
                             showPlane={showPlane}
+                            axesOpacity={axesOpacity}
+                            planeOpacity={planeOpacity}
+                            sharedCameraRef={sharedCameraRef}
                         />
                     ))}
                 </div>
@@ -379,6 +492,16 @@ export default function TSNETransition3D({ className }) {
                     </div>
                     <div className="flex gap-2">
                     <button
+                        onClick={() => setShowBase(s => !s)}
+                        className={`px-3 py-1.5 text-xs rounded-md border transition duration-300 ${
+                            showBase
+                                ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/40 text-[var(--color-honeydew)]"
+                                : "bg-white/10 border-[var(--color-honeydew)]/20 text-[var(--color-honeydew)]/70 hover:bg-[var(--color-magenta)]/30"
+                        }`}
+                    >
+                        Base {showBase ? "On" : "Off"}
+                    </button>
+                    <button
                         onClick={() => setShowPlane(s => !s)}
                         className={`px-3 py-1.5 text-xs rounded-md border transition duration-300 ${
                             showPlane
@@ -408,6 +531,30 @@ export default function TSNETransition3D({ className }) {
                     >
                         Snap {snapEnabled ? "On" : "Off"}
                     </button>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-[var(--color-honeydew)]/50 w-10">Axes</span>
+                        <input
+                            type="range"
+                            min={0} max={1} step={0.01}
+                            value={axesOpacity}
+                            onChange={e => setAxesOpacity(Number(e.target.value))}
+                            className="w-28 accent-[var(--color-magenta)] cursor-pointer"
+                        />
+                        <span className="text-xs text-[var(--color-honeydew)]/40 w-8 text-right">{Math.round(axesOpacity * 100)}%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-[var(--color-honeydew)]/50 w-10">Plane</span>
+                        <input
+                            type="range"
+                            min={0} max={1} step={0.01}
+                            value={planeOpacity}
+                            onChange={e => setPlaneOpacity(Number(e.target.value))}
+                            className="w-28 accent-[var(--color-magenta)] cursor-pointer"
+                        />
+                        <span className="text-xs text-[var(--color-honeydew)]/40 w-8 text-right">{Math.round(planeOpacity * 100)}%</span>
                     </div>
                 </div>
                 <div className="relative w-full">
