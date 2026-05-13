@@ -27,22 +27,23 @@ export function Camera({setPreview, handleUpload}) {
     }
 
     useEffect(() => {
+        let stream;
         async function enableCamera() {
-            try{
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: false,
-                });
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
                 }
-            }
-            catch (err) {
+            } catch (err) {
                 console.error("Error accessing camera:", err);
             }
         }
 
         enableCamera();
+
+        return () => {
+            stream?.getTracks().forEach(t => t.stop());
+        };
     }, []);
 
     function handleCancel(){
