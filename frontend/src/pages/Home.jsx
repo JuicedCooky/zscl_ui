@@ -31,6 +31,9 @@ export default function Home({className}) {
     const [correctClass, setCorrectClass] = useState(null);
 
     const [limitProbabilities, setLimitProbabilities] = useState("5");
+    const [showOnlyCorrect, setShowOnlyCorrect] = useState(false);
+    const [sortByScore, setSortByScore] = useState(null); // null | "desc" | "asc"
+    const [lowMemMode, setLowMemMode] = useState(false);
 
     const listedProbOptions = ["1","5","10","20","50","100","all"];
 
@@ -50,38 +53,36 @@ export default function Home({className}) {
     }, []);
 
     async function handlePredict(){
+        if (isPredicting) return;
         setIsPredicting(true);
-        console.log(preview);
-        if (preview != null){
-            if (currentImageData != null){
-                const resImage = await fetch("http://localhost:8000/upload", {
+        try {
+            if (preview != null){
+                if (currentImageData != null){
+                    await fetch("http://localhost:8000/upload", {
+                        method: "POST",
+                        body: currentImageData,
+                    });
+                }
+
+                const activeModelsArray = selectedModels.map(m => m ? 1 : 0);
+                await fetch(`http://localhost:8000/setactivemodels?preload=${!lowMemMode}`, {
                     method: "POST",
-                    body: currentImageData,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(activeModelsArray)
                 });
+
+                setNoImageError(false);
+                const res = await fetch(
+                    lowMemMode ? "http://localhost:8000/predict_lowmem" : "http://localhost:8000/predict",
+                    { method: "GET" }
+                );
+                setResults(await res.json());
+            } else {
+                setNoImageError(true);
             }
-
-            // Send selected models to backend (convert boolean to 0/1)
-            const activeModelsArray = selectedModels.map(m => m ? 1 : 0);
-            await fetch("http://localhost:8000/setactivemodels", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(activeModelsArray)
-            });
-
-            setNoImageError(false);
-            const res = await fetch("http://localhost:8000/predict", {
-                method: "GET",
-            });
-
-            setResults(await res.json());
-
+        } finally {
+            setIsPredicting(false);
         }
-        else{
-            setNoImageError(true);
-        }
-        setIsPredicting(false);
     }
 
     function changeImage(){
@@ -145,6 +146,8 @@ export default function Home({className}) {
 
         setPreview(URL.createObjectURL(file));
         setCorrectClass(null);
+        setShowOnlyCorrect(false);
+        setSortByScore(null);
 
         const formData = new FormData();
         formData.append("file", file);
@@ -231,14 +234,14 @@ export default function Home({className}) {
 
             <hr className="w-9/10 border-[var(--color-honeydew)]/50"></hr>
             <div className="gap-y-4 flex flex-col w-8/10">
-                <span>Choose Model(s)</span>
+                <span>Choose Model(s) - Each model within a method is learned from the previous step</span>
                 {availableModels.length === 0 && (
                     <span className="text-[var(--color-honeydew)]/50 text-sm">No models found in models/</span>
                 )}
                 {availableModels.length > 0 && (() => {
-                    const base     = availableModels.filter(m => !m.rel.includes("/"));
+                    const base     = availableModels.filter(m => !m.rel.includes("/") || m.rel.startsWith("base_clip/"));
                     const finetune = availableModels.filter(m =>  m.rel.startsWith("finetune/"));
-                    const others   = availableModels.filter(m =>  m.rel.includes("/") && !m.rel.startsWith("finetune/"));
+                    const others   = availableModels.filter(m =>  m.rel.includes("/") && !m.rel.startsWith("finetune/") && !m.rel.startsWith("base_clip/"));
 
                     // Group non-finetune subfolder models by their folder name
                     const folderMap = {};
@@ -301,20 +304,7 @@ export default function Home({className}) {
                                     <div className="flex flex-wrap gap-2 items-center pl-3 border-l-2 border-[var(--color-honeydew)]/20">
                                         {renderConnected(base, base.map(() => "Base"))}
                                     </div>
-                                    <div className="border-t-2 border-[var(--color-honeydew)]/50"></div>
                                 </div>
-                            )}
-                            {folderEntries.map(([folder, models], idx) => (
-                                <React.Fragment key={folder}>
-                                    {idx > 0 && <hr className="border-[var(--color-honeydew)]/20" />}
-                                    <div className="flex flex-col gap-2">
-                                        <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">{folder}</span>
-                                        <div className="flex flex-wrap gap-2 items-center">{renderConnected(models)}</div>
-                                    </div>
-                                </React.Fragment>
-                            ))}
-                            {finetune.length > 0 && folderEntries.length > 0 && (
-                                <hr className="border-[var(--color-honeydew)]/20" />
                             )}
                             {finetune.length > 0 && (
                                 <div className="flex flex-col gap-2">
@@ -327,32 +317,88 @@ export default function Home({className}) {
                                     </div>
                                 </div>
                             )}
+                            {folderEntries.length > 0 && (
+                                <div className="flex items-center gap-3 my-1">
+                                    <div className="flex-1 border-t-4 border-double border-[var(--color-honeydew)]/50"></div>
+                                    <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/40 px-2">Methods</span>
+                                    <div className="flex-1 border-t-4 border-double border-[var(--color-honeydew)]/50"></div>
+                                </div>
+                            )}
+                            {folderEntries.map(([folder, models], idx) => (
+                                <React.Fragment key={folder}>
+                                    {idx > 0 && <hr className="border-[var(--color-honeydew)]/20" />}
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">{folder}</span>
+                                        <div className="flex flex-wrap gap-2 items-center">{renderConnected(models)}</div>
+                                    </div>
+                                </React.Fragment>
+                            ))}
                         </div>
                     );
                 })()}
             </div>
-            <div className="btn gap-4 px-4 flex items-center justify-between">
-                <IoIosSend  className="text-[var(--color-honeydew)]"/>
-                <button onClick={handlePredict} className="">Predict</button>
+            <div className="flex items-center gap-3">
+                <div className="btn gap-4 px-4 flex items-center justify-between">
+                    <IoIosSend className="text-[var(--color-honeydew)]"/>
+                    <button onClick={handlePredict} disabled={isPredicting} className="disabled:opacity-50 disabled:cursor-not-allowed">Predict</button>
+                </div>
+                <button
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md border-1 text-sm transition duration-200 ${
+                        lowMemMode
+                            ? "bg-[var(--color-magenta)]/40 border-[var(--color-honeydew)]/60"
+                            : "bg-white/10 border-[var(--color-onyx)] hover:bg-white/20"
+                    }`}
+                    onClick={() => setLowMemMode(v => !v)}
+                    title="Load and unload each model one at a time instead of keeping all in memory"
+                >
+                    Low memory
+                </button>
             </div>
             <hr className="w-9/10  border-[var(--color-honeydew)]/50"></hr>
 
             <span className="w-8/10 text-left text-3xl">Results:</span>
 
-            <div className="flex items-center bg-white/10 border-1 h-15 rounded-md border-[var(--color-onyx)] overflow-visible pl-2">
-                <span className="mr-2">Limit:</span>
-                <select
-                className="bg-[var(--color-magenta)]/30 rounded-md  w-6/10 h-8/10 pl-2 hover:bg-[var(--color-magenta)]/60" 
-                value={limitProbabilities} 
-                onChange={(e) => setLimitProbabilities(e.target.value)}
-                >
-                    {listedProbOptions.map(opt => (
-                        <option key={opt} value={opt}>
-                            {opt === "all" ? "Show All" : opt}
-                        </option>
-                    ))
-                    }
-                </select>
+            <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center bg-white/10 border-1 h-15 rounded-md border-[var(--color-onyx)] overflow-visible pl-2">
+                    <span className="mr-2">Limit:</span>
+                    <select
+                    className="bg-[var(--color-magenta)]/30 rounded-md  w-6/10 h-8/10 pl-2 hover:bg-[var(--color-magenta)]/60"
+                    value={limitProbabilities}
+                    onChange={(e) => setLimitProbabilities(e.target.value)}
+                    >
+                        {listedProbOptions.map(opt => (
+                            <option key={opt} value={opt}>
+                                {opt === "all" ? "Show All" : opt}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                {correctClass && (
+                    <button
+                        className={`flex items-center gap-2 px-3 h-15 rounded-md border-1 transition duration-200 ${
+                            showOnlyCorrect
+                                ? "bg-[var(--color-magenta)]/40 border-[var(--color-honeydew)]/60"
+                                : "bg-white/10 border-[var(--color-onyx)] hover:bg-white/20"
+                        }`}
+                        onClick={() => setShowOnlyCorrect(v => !v)}
+                    >
+                        <span className="text-sm">Show only true label</span>
+                    </button>
+                )}
+                {correctClass && (
+                    <button
+                        className={`flex items-center gap-2 px-3 h-15 rounded-md border-1 transition duration-200 ${
+                            sortByScore
+                                ? "bg-[var(--color-magenta)]/40 border-[var(--color-honeydew)]/60"
+                                : "bg-white/10 border-[var(--color-onyx)] hover:bg-white/20"
+                        }`}
+                        onClick={() => setSortByScore(s => s === null ? "desc" : s === "desc" ? "asc" : null)}
+                    >
+                        <span className="text-sm">
+                            Sort by score {sortByScore === "desc" ? "↓" : sortByScore === "asc" ? "↑" : "↕"}
+                        </span>
+                    </button>
+                )}
             </div>
             <div className="border-2 p-5 rounded-md w-8/10 min-h-[200px]">
                 {isPredicting &&
@@ -364,7 +410,16 @@ export default function Home({className}) {
                             <span>Comparing {Object.keys(results).length} model{Object.keys(results).length > 1 ? "s" : ""}</span>
                         </div>
                         <div className="flex flex-row gap-6 overflow-x-auto pb-4">
-                            {Object.entries(results).map(([modelName, modelResults], index) => {
+                            {(sortByScore && correctClass
+                                ? [...Object.entries(results)].sort(([, a], [, b]) => {
+                                    const aKey = findCorrectLabel(a, correctClass);
+                                    const bKey = findCorrectLabel(b, correctClass);
+                                    const aScore = aKey ? a[aKey] : 0;
+                                    const bScore = bKey ? b[bKey] : 0;
+                                    return sortByScore === "desc" ? bScore - aScore : aScore - bScore;
+                                })
+                                : Object.entries(results)
+                            ).map(([modelName, modelResults], index) => {
                                 const allEntries = Object.entries(modelResults);
                                 const correctLabel = findCorrectLabel(modelResults, correctClass);
                                 const correctRank = correctLabel
@@ -372,9 +427,11 @@ export default function Home({className}) {
                                     : -1;
                                 const isTop1 = correctRank === 0;
                                 const isTop5 = correctRank >= 0 && correctRank < 5;
-                                const displayed = limitProbabilities === "all"
-                                    ? allEntries
-                                    : allEntries.slice(0, Number(limitProbabilities));
+                                const displayed = showOnlyCorrect && correctLabel
+                                    ? allEntries.filter(([l]) => l === correctLabel)
+                                    : limitProbabilities === "all"
+                                        ? allEntries
+                                        : allEntries.slice(0, Number(limitProbabilities));
                                 return (
                                     <div key={modelName} className="flex flex-col gap-2 min-w-[280px] flex-1 bg-white/5 rounded-lg p-4">
                                         <div className="flex items-center gap-2 border-b border-[var(--color-honeydew)]/30 pb-2 flex-wrap">
