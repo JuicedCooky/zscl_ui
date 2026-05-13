@@ -24,6 +24,9 @@ const DATASET_COLORS = {
     ImageNetV2:     "#FAD7A0",
 };
 
+const _csvDataCache = {};
+const _methodDatasetsCache = {};
+
 function SectionDivider({ label }) {
     return (
         <div className="flex items-center gap-3 w-full">
@@ -202,7 +205,7 @@ function MethodCanvas({ method, csvs, sliderValue, bounds, loading, filteredIndi
 export default function TSNETransition({ className }) {
     const [methods, setMethods]           = useState([]);
     const [selected, setSelected]         = useState([]);
-    const [csvsByMethod, setCsvsByMethod] = useState({});
+    const [csvsByMethod, setCsvsByMethod] = useState(() => ({ ..._methodDatasetsCache }));
     const [loadingSet, setLoadingSet]     = useState(new Set());
     const [sliderValue, setSliderValue]   = useState(0);
     const [snapEnabled, setSnapEnabled]   = useState(true);
@@ -212,8 +215,8 @@ export default function TSNETransition({ className }) {
     const [sampleLimit, setSampleLimit]   = useState(9999);
     const [classLimit, setClassLimit]     = useState(10);
 
-    const csvCache    = useRef({});
-    const loadTrigged = useRef(new Set());
+    const csvCache    = useRef(_csvDataCache);
+    const loadTrigged = useRef(new Set(Object.keys(_methodDatasetsCache)));
     const rafRef      = useRef(null);
     const lastTimeRef = useRef(null);
     const playingRef  = useRef(false);
@@ -244,6 +247,7 @@ export default function TSNETransition({ className }) {
                 .then(async ({ files }) => {
                     const paths = ["base", ...files.map(f => `${m}/${f}`)];
                     const datasets = await Promise.all(paths.map(loadCsvData));
+                    _methodDatasetsCache[m] = datasets;
                     setCsvsByMethod(prev => ({ ...prev, [m]: datasets }));
                     setLoadingSet(prev => { const s = new Set(prev); s.delete(m); return s; });
                 })

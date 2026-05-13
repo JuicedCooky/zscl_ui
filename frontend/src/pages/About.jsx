@@ -11,6 +11,9 @@ export default function About({ className }) {
                 <p className="mt-4">
                     Use the navigation on the left to switch between pages.
                 </p>
+                <a href="https://github.com/JuicedCooky/thesis" className="text-blue-600 underline hover:text-b">Github repository of model and training</a>
+                <br />
+                <a href="https://github.com/JuicedCooky/zscl_ui" className="text-blue-600 underline hover:text-b">Github this demostration of comparison of Continual Learning Methods</a>
             </div>
         </div>
     );
