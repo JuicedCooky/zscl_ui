@@ -133,6 +133,27 @@ export default function Home({className}) {
     }
 
 
+    const modelLabelMap = React.useMemo(() => {
+        const base     = availableModels.filter(m => !m.rel.includes("/") || m.rel.startsWith("base_clip/"));
+        const finetune = availableModels.filter(m => m.rel.startsWith("finetune/"));
+        const others   = availableModels.filter(m => m.rel.includes("/") && !m.rel.startsWith("finetune/") && !m.rel.startsWith("base_clip/"));
+        const folderMap = {};
+        others.forEach(m => { const f = m.rel.split("/")[0]; (folderMap[f] ??= []).push(m); });
+
+        const map = {};
+        base.forEach(m => { map[m.display_name] = { label: "Base", group: "Base Model" }; });
+
+        const addCumulative = (models, group) =>
+            models.forEach((model, idx) => {
+                const label = models.slice(0, idx + 1).map(m => m.display_name.split("_")[1]).join(", ");
+                map[model.display_name] = { label, group };
+            });
+
+        addCumulative(finetune, "Finetune Baseline");
+        Object.entries(folderMap).forEach(([folder, models]) => addCumulative(models, folder));
+        return map;
+    }, [availableModels]);
+
     function findCorrectLabel(predictions, cls) {
         if (!cls) return null;
         const norm = cls.toLowerCase();
@@ -223,11 +244,11 @@ export default function Home({className}) {
 
 
             <div>
-                <div className="btn gap-4 px-4 flex items-center justify-between">
-                    <FaEdit className="text-[var(--color-honeydew)]"/>
-                    <button onClick={displayClasses} className="">Review and Edit Class Names</button>
-                </div>
-                {isGettingClasses && 
+                <button onClick={displayClasses} className="btn gap-3 px-4 flex items-center">
+                    <FaEdit />
+                    <span>Review and Edit Class Names</span>
+                </button>
+                {isGettingClasses &&
                     <LoadingSpinner/>
                 }
             </div>
@@ -338,10 +359,14 @@ export default function Home({className}) {
                 })()}
             </div>
             <div className="flex items-center gap-3">
-                <div className="btn gap-4 px-4 flex items-center justify-between">
-                    <IoIosSend className="text-[var(--color-honeydew)]"/>
-                    <button onClick={handlePredict} disabled={isPredicting} className="disabled:opacity-50 disabled:cursor-not-allowed">Predict</button>
-                </div>
+                <button
+                    onClick={handlePredict}
+                    disabled={isPredicting}
+                    className="btn gap-3 px-4 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <IoIosSend />
+                    <span>Predict</span>
+                </button>
                 <button
                     className={`flex items-center gap-2 px-3 py-2 rounded-md border-1 text-sm transition duration-200 ${
                         lowMemMode
@@ -435,12 +460,19 @@ export default function Home({className}) {
                                 return (
                                     <div key={modelName} className="flex flex-col gap-2 min-w-[280px] flex-1 bg-white/5 rounded-lg p-4">
                                         <div className="flex items-center gap-2 border-b border-[var(--color-honeydew)]/30 pb-2 flex-wrap">
-                                            <span className="bg-[var(--color-magenta)]/60 text-xs px-2 py-1 rounded">
+                                            <span className="bg-[var(--color-magenta)]/60 text-xs px-2 py-1 rounded self-start mt-0.5">
                                                 #{index + 1}
                                             </span>
-                                            <span className="text-lg font-semibold truncate flex-1" title={modelName}>
-                                                {modelName}
-                                            </span>
+                                            <div className="flex flex-col flex-1 min-w-0 gap-1" title={modelName}>
+                                                {modelLabelMap[modelName]?.group && (
+                                                    <span className="text-[10px] uppercase tracking-widest font-semibold px-1.5 py-0.5 rounded bg-[var(--color-emerald)]/50 text-[var(--color-honeydew)]/80 self-start leading-tight">
+                                                        {modelLabelMap[modelName].group}
+                                                    </span>
+                                                )}
+                                                <span className="text-base font-semibold truncate leading-snug">
+                                                    {modelLabelMap[modelName]?.label ?? modelName}
+                                                </span>
+                                            </div>
                                             {correctClass && isTop1 && (
                                                 <span className="text-xs px-2 py-1 rounded bg-green-600/80 font-bold whitespace-nowrap">Top-1 ✓</span>
                                             )}
@@ -468,10 +500,14 @@ export default function Home({className}) {
                     </>
                 )}
                 {results?.error &&
-                    <span className="text-red-700">{results.error}</span>
+                    <div className="text-red-400 bg-red-950/40 border border-red-700/40 rounded-md px-3 py-2 text-sm">
+                        {results.error}
+                    </div>
                 }
                 {noImageError &&
-                    <span className="text-red-700">ERROR, NO IMAGE SELECTED</span>
+                    <div className="text-red-400 bg-red-950/40 border border-red-700/40 rounded-md px-3 py-2 text-sm">
+                        No image selected — please upload or select an image first.
+                    </div>
                 }
             </div>
             {showClasses && 
