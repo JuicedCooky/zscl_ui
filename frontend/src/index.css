@@ -56,7 +56,7 @@ h1 {
 }
 @layer components {
   .btn {
-    @apply p-3 bg-white/10 rounded-md border-1 border-[var(--color-onyx)] 
-    hover:bg-[var(--color-magenta)]/20 transition duration-300;
+    @apply p-3 bg-white/10 rounded-md border-1 border-[var(--color-honeydew)]/40
+    text-[var(--color-honeydew)] hover:bg-[var(--color-magenta)]/20 transition duration-300;
   }
 }

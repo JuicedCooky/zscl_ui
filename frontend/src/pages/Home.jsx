@@ -163,32 +163,32 @@ export default function Home({className}) {
         <div className={`${className} flex flex-col gap-4 pt-10 items-center h-auto`}>
             <div className="w-1/2 bg-white/10 rounded-md p-2 border-1 gap-2 flex relative">
                 <button className={`${inputMode !== "upload" ?
-                    "hover:border-solid hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)] transition duration-300"
+                    "hover:border-solid hover:bg-[var(--color-magenta)]/20 hover:border-[var(--color-honeydew)]/60 transition duration-300"
                     : ""}
-                w-1/3 rounded-md p-3 z-1 border-transparent border-1`}
+                w-1/3 rounded-md p-3 z-1 border-[var(--color-honeydew)]/30 border-1`}
                     onClick={() => { setInputMode("upload"); setPreview(null); setCorrectClass(null); }}>
                     Upload Image
                 </button>
 
                 <button className={`${inputMode !== "camera" ?
-                    "hover:border-solid hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)] transition duration-300"
+                    "hover:border-solid hover:bg-[var(--color-magenta)]/20 hover:border-[var(--color-honeydew)]/60 transition duration-300"
                     : ""}
-                w-1/3 rounded-md p-3 z-1 border-transparent border-1`}
+                w-1/3 rounded-md p-3 z-1 border-[var(--color-honeydew)]/30 border-1`}
                     onClick={() => { setInputMode("camera"); setPreview(null); setCorrectClass(null); }}>
                     Capture Image
                 </button>
 
                 <button className={`${inputMode !== "dataset" ?
-                    "hover:border-solid hover:bg-[var(--color-onyx)]/20 hover:border-[var(--color-onyx)] transition duration-300"
+                    "hover:border-solid hover:bg-[var(--color-magenta)]/20 hover:border-[var(--color-honeydew)]/60 transition duration-300"
                     : ""}
-                w-1/3 rounded-md p-3 z-1 border-transparent border-1 flex items-center justify-center gap-2`}
+                w-1/3 rounded-md p-3 z-1 border-[var(--color-honeydew)]/30 border-1 flex items-center justify-center gap-2`}
                     onClick={() => { setInputMode("dataset"); setPreview(null); }}>
                     <IoFolderOpenOutline />
                     Dataset Images
                 </button>
 
                 <div className={`transition duration-300
-                border-1 border-[var(--color-onyx)] absolute bg-[var(--color-magenta)]/60 h-[calc(100%-theme(space.4))] rounded-md w-[calc(33.333%-theme(space.2))] ${
+                border-1 border-[var(--color-onyx)] absolute top-2 left-2 bg-[var(--color-magenta)]/60 h-[calc(100%-theme(space.4))] rounded-md w-[calc((100%-32px)/3)] ${
                     inputMode === "camera" ? "translate-x-[calc(100%+theme(space.2))]"
                     : inputMode === "dataset" ? "translate-x-[calc(200%+theme(space.4))]"
                     : ""
@@ -247,50 +247,83 @@ export default function Home({className}) {
                         (folderMap[folder] ??= []).push(m);
                     });
 
-                    const renderBtn = (model) => {
+                    const A = 14;
+
+                    const renderBtn = (model, label, { clipPath, position, zIndex, marginLeft, paddingLeft, paddingRight }) => {
                         const i = availableModels.indexOf(model);
+                        const selected = selectedModels[i];
                         return (
-                            <button
+                            <div
                                 key={model.rel}
-                                className={`btn ${selectedModels[i] ? "" : "bg-transparent hover:bg-gray-600/50"}`}
-                                onClick={() => setSelectedModels(prev => {
-                                    const next = [...prev];
-                                    next[i] = !next[i];
-                                    return next;
-                                })}
+                                style={{ clipPath, position, zIndex, marginLeft, padding: 1, display: "inline-flex" }}
+                                className={selected ? "bg-green-400/35 hover:bg-red-500/40" : "bg-white/20"}
                             >
-                                {model.display_name}
-                            </button>
+                                <button
+                                    style={{ paddingLeft, paddingRight, border: "none", flex: 1 }}
+                                    className={`btn ${selected ? "bg-green-700/40 hover:bg-red-700/50" : "bg-transparent hover:bg-gray-600/50"}`}
+                                    onClick={() => setSelectedModels(prev => {
+                                        const next = [...prev];
+                                        next[i] = !next[i];
+                                        return next;
+                                    })}
+                                >
+                                    {label}
+                                </button>
+                            </div>
                         );
                     };
 
+                    const renderConnected = (models, labels) =>
+                        models.map((model, idx) => {
+                            const cumulativeLabel = labels?.[idx] ?? models.slice(0, idx + 1).map(m => m.display_name.split("_")[1]).join(",");
+                            const isFirst = idx === 0;
+                            const isLast  = idx === models.length - 1;
+                            const clipPath = `polygon(0 0, calc(100% - ${A}px) 0, 100% 50%, calc(100% - ${A}px) 100%, 0 100%, ${A}px 50%)`;
+                            return renderBtn(model, cumulativeLabel, {
+                                clipPath,
+                                position: "relative",
+                                zIndex: idx + 1,
+                                marginLeft: isFirst ? 0 : -(A - 1),
+                                paddingLeft: A + 12,
+                                paddingRight: A + 8,
+                            });
+                        });
+
+                    const folderEntries = Object.entries(folderMap);
                     return (
                         <div className="flex flex-col gap-4">
                             {base.length > 0 && (
                                 <div className="flex flex-col gap-2">
                                     <div className="flex items-center gap-3">
                                         <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">Base Model</span>
-                                        <div className="flex-1 border-t border-dashed border-[var(--color-honeydew)]/20"></div>
+                                        <div className="flex-1 border-t-2 border-[var(--color-honeydew)]/50"></div>
                                     </div>
-                                    <div className="flex flex-wrap gap-2 pl-3 border-l-2 border-[var(--color-honeydew)]/20">
-                                        {base.map(renderBtn)}
+                                    <div className="flex flex-wrap gap-2 items-center pl-3 border-l-2 border-[var(--color-honeydew)]/20">
+                                        {renderConnected(base, base.map(() => "Base"))}
                                     </div>
+                                    <div className="border-t-2 border-[var(--color-honeydew)]/50"></div>
                                 </div>
                             )}
-                            {Object.entries(folderMap).map(([folder, models]) => (
-                                <div key={folder} className="flex flex-col gap-2">
-                                    <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">{folder}</span>
-                                    <div className="flex flex-wrap gap-2">{models.map(renderBtn)}</div>
-                                </div>
+                            {folderEntries.map(([folder, models], idx) => (
+                                <React.Fragment key={folder}>
+                                    {idx > 0 && <hr className="border-[var(--color-honeydew)]/20" />}
+                                    <div className="flex flex-col gap-2">
+                                        <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">{folder}</span>
+                                        <div className="flex flex-wrap gap-2 items-center">{renderConnected(models)}</div>
+                                    </div>
+                                </React.Fragment>
                             ))}
+                            {finetune.length > 0 && folderEntries.length > 0 && (
+                                <hr className="border-[var(--color-honeydew)]/20" />
+                            )}
                             {finetune.length > 0 && (
                                 <div className="flex flex-col gap-2">
                                     <div className="flex items-center gap-3">
                                         <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">Finetune Baseline</span>
-                                        <div className="flex-1 border-t border-dashed border-[var(--color-honeydew)]/20"></div>
+                                        <div className="flex-1 border-t-2 border-[var(--color-honeydew)]/50"></div>
                                     </div>
-                                    <div className="flex flex-wrap gap-2 pl-3 border-l-2 border-[var(--color-honeydew)]/20">
-                                        {finetune.map(renderBtn)}
+                                    <div className="flex flex-wrap gap-2 items-center pl-3 border-l-2 border-[var(--color-honeydew)]/20">
+                                        {renderConnected(finetune)}
                                     </div>
                                 </div>
                             )}
@@ -385,7 +418,7 @@ export default function Home({className}) {
                 }
             </div>
             {showClasses && 
-                <div className="absolute bg-black/75 h-full w-full top-0 z-2 flex">
+                <div className="absolute bg-black/75 h-full w-full top-0 z-50 flex">
                     <ClassTextArea className="w-1/2 h-8/10 m-auto" 
                     classes={classes} 
                     onCancel={() => setShowClasses(false)} 

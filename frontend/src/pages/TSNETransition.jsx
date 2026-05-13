@@ -37,8 +37,8 @@ function SectionDivider({ label }) {
 function btnCls(active) {
     return `px-4 py-2 text-sm rounded-md border transition duration-300 capitalize ${
         active
-            ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/40 text-[var(--color-honeydew)]"
-            : "bg-white/10 border-[var(--color-honeydew)]/20 text-[var(--color-honeydew)]/70 hover:bg-[var(--color-magenta)]/30"
+            ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/60 text-[var(--color-honeydew)]"
+            : "bg-white/10 border-[var(--color-honeydew)]/50 text-[var(--color-honeydew)] hover:bg-[var(--color-magenta)]/30"
     }`;
 }
 
@@ -55,7 +55,7 @@ function computeBounds(csvList) {
     return { xMin, xMax, yMin, yMax };
 }
 
-function drawCanvas(canvas, fromData, toData, t, bounds, splitPos, baseData) {
+function drawCanvas(canvas, fromData, toData, t, bounds, filteredIndices = null) {
     const ctx = canvas.getContext("2d");
     const W = canvas.width, H = canvas.height;
     ctx.fillStyle = "#0f0f1a";
@@ -70,40 +70,49 @@ function drawCanvas(canvas, fromData, toData, t, bounds, splitPos, baseData) {
     const offX = pad + ((W - 2 * pad) - scale * rangeX) / 2;
     const offY = pad + ((H - 2 * pad) - scale * rangeY) / 2;
 
-    function drawPts(fromPts, toPts, interp) {
-        const n = Math.min(fromPts.length, toPts.length);
-        for (let i = 0; i < n; i++) {
-            const a = fromPts[i], b = toPts[i];
-            const cx = offX + (a.x + interp * (b.x - a.x) - xMin) * scale;
-            const cy = offY + (a.y + interp * (b.y - a.y) - yMin) * scale;
-            ctx.beginPath();
-            ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
-            ctx.fillStyle = DATASET_COLORS[a.dataset] ?? "#ffffff";
-            ctx.fill();
-        }
-    }
-
-    const splitX = (splitPos / 100) * W;
-
-    if (splitPos > 0 && baseData) {
-        ctx.save();
-        ctx.beginPath(); ctx.rect(0, 0, splitX, H); ctx.clip();
-        drawPts(baseData, baseData, 0);
-        ctx.restore();
-    }
-    if (splitPos < 100) {
-        ctx.save();
-        ctx.beginPath(); ctx.rect(splitX, 0, W - splitX, H); ctx.clip();
-        drawPts(fromData, toData, t);
-        ctx.restore();
+    const n = Math.min(fromData.length, toData.length);
+    const count = filteredIndices ? filteredIndices.length : n;
+    for (let idx = 0; idx < count; idx++) {
+        const i = filteredIndices ? filteredIndices[idx] : idx;
+        if (i >= n) continue;
+        const a = fromData[i], b = toData[i];
+        const cx = offX + (a.x + t * (b.x - a.x) - xMin) * scale;
+        const cy = offY + (a.y + t * (b.y - a.y) - yMin) * scale;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = DATASET_COLORS[a.dataset] ?? "#ffffff";
+        ctx.fill();
     }
 }
 
+// ── Standalone base canvas ────────────────────────────────────────────
+function BaseCanvas({ baseData, bounds, filteredIndices }) {
+    const canvasRef = useRef(null);
+
+    useEffect(() => {
+        if (canvasRef.current)
+            drawCanvas(canvasRef.current, baseData, baseData, 0, bounds, filteredIndices);
+    }, [baseData, bounds, filteredIndices]);
+
+    return (
+        <div className="relative aspect-square w-full">
+            <canvas
+                ref={canvasRef}
+                width={640}
+                height={640}
+                className="w-full h-full rounded-lg border border-[var(--color-honeydew)]/30 border-dashed"
+            />
+            <div className="absolute top-2 left-3 text-xs text-[var(--color-honeydew)]/70 bg-black/50 px-2 py-0.5 rounded">
+                Base
+            </div>
+        </div>
+    );
+}
+
 // ── Per-method canvas ─────────────────────────────────────────────────
-function MethodCanvas({ method, csvs, sliderValue, bounds, loading, splitPos, onSplitChange }) {
+function MethodCanvas({ method, csvs, sliderValue, bounds, loading, filteredIndices }) {
     const canvasRef    = useRef(null);
     const containerRef = useRef(null);
-    const isDraggingRef = useRef(false);
     const [tooltip, setTooltip] = useState(null);
 
     const totalT   = csvs.length > 1 ? (sliderValue / SLIDER_MAX) * (STEPS.length - 1) : 0;
@@ -111,25 +120,15 @@ function MethodCanvas({ method, csvs, sliderValue, bounds, loading, splitPos, on
     const interpT  = totalT - segment;
     const fromData = csvs[segment]     ?? null;
     const toData   = csvs[segment + 1] ?? null;
-    const baseData = csvs[0]           ?? null;
 
     useEffect(() => {
         if (canvasRef.current)
-            drawCanvas(canvasRef.current, fromData, toData, interpT, bounds, splitPos, baseData);
-    }, [fromData, toData, interpT, bounds, splitPos, baseData]);
+            drawCanvas(canvasRef.current, fromData, toData, interpT, bounds, filteredIndices);
+    }, [fromData, toData, interpT, bounds, filteredIndices]);
 
     function handleMouseMove(e) {
         const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        if (isDraggingRef.current) {
-            const rect = canvas.getBoundingClientRect();
-            const newPos = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
-            onSplitChange?.(newPos);
-            return;
-        }
-
-        if (!bounds) { setTooltip(null); return; }
+        if (!canvas || !bounds) { setTooltip(null); return; }
 
         const rect = canvas.getBoundingClientRect();
         const sx = canvas.width / rect.width;
@@ -144,19 +143,16 @@ function MethodCanvas({ method, csvs, sliderValue, bounds, loading, splitPos, on
         const offX = pad + ((W - 2*pad) - scale * rangeX) / 2;
         const offY = pad + ((H - 2*pad) - scale * rangeY) / 2;
 
-        const splitX   = (splitPos / 100) * W;
-        const inLeft   = splitPos > 0 && mx < splitX;
-        const searchFrom = inLeft ? (baseData ?? []) : (fromData ?? []);
-        const searchTo   = inLeft ? (baseData ?? []) : (toData   ?? []);
-        const searchT    = inLeft ? 0 : interpT;
-        if (!searchFrom.length) { setTooltip(null); return; }
-
-        const n = Math.min(searchFrom.length, searchTo.length);
+        if (!fromData?.length) { setTooltip(null); return; }
+        const n = Math.min(fromData.length, toData?.length ?? 0);
+        const count = filteredIndices ? filteredIndices.length : n;
         let bestDist = Infinity, bestPt = null;
-        for (let i = 0; i < n; i++) {
-            const a = searchFrom[i], b = searchTo[i];
-            const px = offX + (a.x + searchT * (b.x - a.x) - xMin) * scale;
-            const py = offY + (a.y + searchT * (b.y - a.y) - yMin) * scale;
+        for (let idx = 0; idx < count; idx++) {
+            const i = filteredIndices ? filteredIndices[idx] : idx;
+            if (i >= n) continue;
+            const a = fromData[i], b = toData[i];
+            const px = offX + (a.x + interpT * (b.x - a.x) - xMin) * scale;
+            const py = offY + (a.y + interpT * (b.y - a.y) - yMin) * scale;
             const d = (mx - px) ** 2 + (my - py) ** 2;
             if (d < bestDist) { bestDist = d; bestPt = a; }
         }
@@ -168,18 +164,12 @@ function MethodCanvas({ method, csvs, sliderValue, bounds, loading, splitPos, on
         }
     }
 
-    function stopDrag() {
-        isDraggingRef.current = false;
-        if (containerRef.current) containerRef.current.style.cursor = '';
-    }
-
     return (
         <div
             ref={containerRef}
             className="relative aspect-square w-full"
             onMouseMove={handleMouseMove}
-            onMouseLeave={() => { stopDrag(); setTooltip(null); }}
-            onMouseUp={stopDrag}
+            onMouseLeave={() => setTooltip(null)}
         >
             <canvas
                 ref={canvasRef}
@@ -195,36 +185,6 @@ function MethodCanvas({ method, csvs, sliderValue, bounds, loading, splitPos, on
             <div className="absolute top-2 left-3 text-xs capitalize text-[var(--color-honeydew)]/70 bg-black/50 px-2 py-0.5 rounded">
                 {method}
             </div>
-            {splitPos > 0 && splitPos < 100 && (
-                <>
-                    {/* dashed divider line */}
-                    <div
-                        className="absolute top-0 bottom-0 pointer-events-none"
-                        style={{ left: `${splitPos}%`, transform: 'translateX(-50%)', borderLeft: '1.5px dashed rgba(255,255,255,0.35)', zIndex: 10 }}
-                    />
-                    {/* drag handle */}
-                    <div
-                        onMouseDown={e => { e.preventDefault(); isDraggingRef.current = true; if (containerRef.current) containerRef.current.style.cursor = 'ew-resize'; }}
-                        style={{
-                            position: 'absolute',
-                            left: `${splitPos}%`,
-                            top: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            width: 18,
-                            height: 18,
-                            borderRadius: '50%',
-                            background: 'rgba(255,255,255,0.78)',
-                            border: '2px solid rgba(200,200,255,0.6)',
-                            cursor: 'ew-resize',
-                            zIndex: 20,
-                            boxShadow: '0 1px 5px rgba(0,0,0,0.55)',
-                        }}
-                    />
-                    <div className="absolute bottom-2 pointer-events-none text-[10px] text-[var(--color-honeydew)]/40" style={{ left: `calc(${splitPos / 2}%)` }}>Base</div>
-                    <div className="absolute bottom-2 pointer-events-none text-[10px] text-[var(--color-honeydew)]/40" style={{ right: `calc(${(100 - splitPos) / 2}%)` }}>Current</div>
-                </>
-            )}
-            {splitPos === 100 && <div className="absolute bottom-2 left-2 text-[10px] text-[var(--color-honeydew)]/40 pointer-events-none">Base</div>}
             {tooltip && (
                 <div
                     className="absolute z-10 bg-black/80 border border-[var(--color-honeydew)]/30 rounded px-2 py-1 text-xs text-[var(--color-honeydew)] whitespace-nowrap pointer-events-none"
@@ -246,9 +206,11 @@ export default function TSNETransition({ className }) {
     const [loadingSet, setLoadingSet]     = useState(new Set());
     const [sliderValue, setSliderValue]   = useState(0);
     const [snapEnabled, setSnapEnabled]   = useState(true);
-    const [splitPos, setSplitPos]         = useState(0);
+    const [showBase, setShowBase]         = useState(false);
     const [isPlaying, setIsPlaying]       = useState(false);
     const [speed, setSpeed]               = useState("1");
+    const [sampleLimit, setSampleLimit]   = useState(9999);
+    const [classLimit, setClassLimit]     = useState(10);
 
     const csvCache    = useRef({});
     const loadTrigged = useRef(new Set());
@@ -271,7 +233,6 @@ export default function TSNETransition({ className }) {
             .catch(() => {});
     }, []);
 
-    // Kick off loading for any newly selected method
     useEffect(() => {
         for (const m of selected) {
             if (loadTrigged.current.has(m)) continue;
@@ -334,12 +295,59 @@ export default function TSNETransition({ className }) {
         return () => cancelAnimationFrame(rafRef.current);
     }, [isPlaying, speed]);
 
-    // Stable bounds from all currently selected methods combined
     const bounds = useMemo(() => {
         const allCsvs = selected.flatMap(m => csvsByMethod[m] ?? []);
         if (allCsvs.length === 0) return null;
         return computeBounds(allCsvs);
     }, [selected, csvsByMethod]);
+
+    const baseData = useMemo(() => {
+        for (const m of selected) {
+            const c = csvsByMethod[m];
+            if (c && c[0]) return c[0];
+        }
+        return null;
+    }, [selected, csvsByMethod]);
+
+    const maxSamplesPerDataset = useMemo(() => {
+        if (!baseData) return 100;
+        const counts = {};
+        for (const p of baseData) counts[p.dataset] = (counts[p.dataset] || 0) + 1;
+        return Math.max(...Object.values(counts), 1);
+    }, [baseData]);
+
+    const filteredIndices = useMemo(() => {
+        if (!baseData) return null;
+
+        // First pass: determine the first classLimit unique labels per dataset
+        const allowedClasses = {};
+        let classFilterActive = false;
+        for (const p of baseData) {
+            if (!allowedClasses[p.dataset]) allowedClasses[p.dataset] = new Set();
+            const s = allowedClasses[p.dataset];
+            if (!s.has(p.label)) {
+                if (s.size >= classLimit) classFilterActive = true;
+                else s.add(p.label);
+            }
+        }
+
+        const noSampleFilter = sampleLimit >= maxSamplesPerDataset;
+        if (!classFilterActive && noSampleFilter) return null;
+
+        // Second pass: collect indices that pass both filters
+        const sampleCounts = {};
+        const indices = [];
+        for (let i = 0; i < baseData.length; i++) {
+            const p = baseData[i];
+            if (!allowedClasses[p.dataset]?.has(p.label)) continue;
+            if (!noSampleFilter) {
+                sampleCounts[p.dataset] = (sampleCounts[p.dataset] || 0) + 1;
+                if (sampleCounts[p.dataset] > sampleLimit) continue;
+            }
+            indices.push(i);
+        }
+        return indices;
+    }, [baseData, sampleLimit, classLimit, maxSamplesPerDataset]);
 
     function applySnap(raw) {
         if (!snapEnabled) return raw;
@@ -347,11 +355,10 @@ export default function TSNETransition({ className }) {
         return Math.abs(raw - nearest) <= 12 ? nearest : raw;
     }
 
-    const nearestStep = Math.round(sliderValue / 100);
-    const anyLoaded   = selected.some(m => (csvsByMethod[m]?.length ?? 0) >= 2);
-
-    // Grid: 1 column for 1 method, 2 for 2+
-    const gridCols = selected.length === 1 ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))";
+    const nearestStep   = Math.round(sliderValue / 100);
+    const anyLoaded     = selected.some(m => (csvsByMethod[m]?.length ?? 0) >= 2);
+    const totalCanvases = selected.length + (showBase && baseData ? 1 : 0);
+    const gridCols      = totalCanvases === 1 ? "1fr" : "repeat(auto-fit, minmax(280px, 1fr))";
 
     return (
         <div className={`${className} flex flex-col items-center gap-6 pt-10 px-8 pb-12`}>
@@ -375,6 +382,9 @@ export default function TSNETransition({ className }) {
                     className="w-full max-w-5xl"
                     style={{ display: "grid", gridTemplateColumns: gridCols, gap: "1rem" }}
                 >
+                    {showBase && baseData && (
+                        <BaseCanvas baseData={baseData} bounds={bounds} filteredIndices={filteredIndices} />
+                    )}
                     {selected.map(m => (
                         <MethodCanvas
                             key={m}
@@ -383,8 +393,7 @@ export default function TSNETransition({ className }) {
                             sliderValue={sliderValue}
                             bounds={bounds}
                             loading={loadingSet.has(m)}
-                            splitPos={splitPos}
-                            onSplitChange={setSplitPos}
+                            filteredIndices={filteredIndices}
                         />
                     ))}
                 </div>
@@ -403,8 +412,8 @@ export default function TSNETransition({ className }) {
                             disabled={!anyLoaded}
                             className={`px-3 py-1.5 text-xs rounded-md border transition duration-300 ${
                                 isPlaying
-                                    ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/40 text-[var(--color-honeydew)]"
-                                    : "bg-white/10 border-[var(--color-honeydew)]/20 text-[var(--color-honeydew)]/70 hover:bg-[var(--color-magenta)]/30"
+                                    ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/60 text-[var(--color-honeydew)]"
+                                    : "bg-white/10 border-[var(--color-honeydew)]/50 text-[var(--color-honeydew)] hover:bg-[var(--color-magenta)]/30"
                             } disabled:opacity-30 disabled:cursor-not-allowed`}
                         >
                             {isPlaying ? "⏸ Pause" : "▶ Play"}
@@ -420,21 +429,53 @@ export default function TSNETransition({ className }) {
                     </div>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => setSplitPos(p => p > 0 ? 0 : 50)}
-                            className={btnCls(splitPos > 0)}
+                            onClick={() => setShowBase(s => !s)}
+                            className={`px-3 py-1.5 text-xs rounded-md border transition duration-300 ${
+                                showBase
+                                    ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/60 text-[var(--color-honeydew)]"
+                                    : "bg-white/10 border-[var(--color-honeydew)]/50 text-[var(--color-honeydew)] hover:bg-[var(--color-magenta)]/30"
+                            }`}
                         >
-                            Base {splitPos > 0 ? "On" : "Off"}
+                            Base {showBase ? "On" : "Off"}
                         </button>
                         <button
                             onClick={() => setSnapEnabled(s => !s)}
                             className={`px-3 py-1.5 text-xs rounded-md border transition duration-300 ${
                                 snapEnabled
-                                    ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/40 text-[var(--color-honeydew)]"
-                                    : "bg-white/10 border-[var(--color-honeydew)]/20 text-[var(--color-honeydew)]/70 hover:bg-[var(--color-magenta)]/30"
+                                    ? "bg-[var(--color-magenta)]/60 border-[var(--color-honeydew)]/60 text-[var(--color-honeydew)]"
+                                    : "bg-white/10 border-[var(--color-honeydew)]/50 text-[var(--color-honeydew)] hover:bg-[var(--color-magenta)]/30"
                             }`}
                         >
                             Snap {snapEnabled ? "On" : "Off"}
                         </button>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-[var(--color-honeydew)]/50 w-16">Samples</span>
+                        <input
+                            type="range"
+                            min={1}
+                            max={maxSamplesPerDataset}
+                            value={Math.min(sampleLimit, maxSamplesPerDataset)}
+                            onChange={e => setSampleLimit(Number(e.target.value))}
+                            className="w-32 accent-[var(--color-magenta)] cursor-pointer"
+                        />
+                        <span className="text-xs text-[var(--color-honeydew)]/40 w-16">
+                            {sampleLimit >= maxSamplesPerDataset ? "All" : `${sampleLimit} / ds`}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-[var(--color-honeydew)]/50 w-16">Classes</span>
+                        <input
+                            type="range"
+                            min={1}
+                            max={10}
+                            value={classLimit}
+                            onChange={e => setClassLimit(Number(e.target.value))}
+                            className="w-32 accent-[var(--color-magenta)] cursor-pointer"
+                        />
+                        <span className="text-xs text-[var(--color-honeydew)]/40 w-8 text-right">{classLimit}</span>
                     </div>
                 </div>
                 <div className="relative w-full">

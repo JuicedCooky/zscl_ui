@@ -130,31 +130,35 @@ function SceneAxes({ size, opacity = 1 }) {
     return <axesHelper ref={ref} args={[size]} />;
 }
 
-function buildGeometry(pts, from, to, t, bounds) {
-    const n = Math.min(from.length, to.length);
+function buildGeometry(pts, from, to, t, bounds, filteredIndices = null) {
+    const all = Math.min(from.length, to.length);
+    const n = filteredIndices ? filteredIndices.length : all;
     const { xMin, xMax, yMin, yMax, zMin, zMax } = bounds;
     const cx = (xMin + xMax) / 2, cy = (yMin + yMax) / 2, cz = (zMin + zMax) / 2;
     const maxRange = Math.max(xMax - xMin, yMax - yMin, zMax - zMin) || 1;
     const scale = (2 * SCENE_HALF) / maxRange;
     const positions = new Float32Array(n * 3);
     const colors    = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
+    for (let idx = 0; idx < n; idx++) {
+        const i = filteredIndices ? filteredIndices[idx] : idx;
+        if (i >= all) continue;
         const a = from[i], b = to[i];
-        positions[i * 3]     = (a.x + t * (b.x - a.x) - cx) * scale;
-        positions[i * 3 + 1] = (a.y + t * (b.y - a.y) - cy) * scale;
-        positions[i * 3 + 2] = (a.z + t * (b.z - a.z) - cz) * scale;
+        positions[idx * 3]     = (a.x + t * (b.x - a.x) - cx) * scale;
+        positions[idx * 3 + 1] = (a.y + t * (b.y - a.y) - cy) * scale;
+        positions[idx * 3 + 2] = (a.z + t * (b.z - a.z) - cz) * scale;
         const c = hexToRgb(DATASET_COLORS[a.dataset] ?? "#ffffff");
-        colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+        colors[idx * 3] = c.r; colors[idx * 3 + 1] = c.g; colors[idx * 3 + 2] = c.b;
     }
     pts.geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     pts.geometry.setAttribute("color",    new THREE.BufferAttribute(colors, 3));
     pts.geometry.computeBoundingSphere();
 }
 
-function ScatterPoints({ csvs, sliderValue, bounds, onHover }) {
-    const ptsRef  = useRef();
-    const fromRef = useRef(null);
-    const lastIdx = useRef(-1);
+function ScatterPoints({ csvs, sliderValue, bounds, onHover, filteredIndices }) {
+    const ptsRef      = useRef();
+    const fromRef     = useRef(null);
+    const filteredRef = useRef(null);
+    const lastIdx     = useRef(-1);
 
     useEffect(() => {
         const pts = ptsRef.current;
@@ -165,9 +169,10 @@ function ScatterPoints({ csvs, sliderValue, bounds, onHover }) {
         const from    = csvs[segment];
         const to      = csvs[segment + 1];
         if (!from || !to) return;
-        fromRef.current = from;
-        buildGeometry(pts, from, to, t, bounds);
-    }, [csvs, sliderValue, bounds]);
+        fromRef.current     = from;
+        filteredRef.current = filteredIndices;
+        buildGeometry(pts, from, to, t, bounds, filteredIndices);
+    }, [csvs, sliderValue, bounds, filteredIndices]);
 
     function handlePointerMove(e) {
         e.stopPropagation();
@@ -175,10 +180,11 @@ function ScatterPoints({ csvs, sliderValue, bounds, onHover }) {
             if (lastIdx.current !== -1) { lastIdx.current = -1; onHover(null); }
             return;
         }
-        const idx = e.intersections[0].index;
-        if (idx === lastIdx.current) return;
-        lastIdx.current = idx;
-        const pt = fromRef.current?.[idx];
+        const geoIdx = e.intersections[0].index;
+        if (geoIdx === lastIdx.current) return;
+        lastIdx.current = geoIdx;
+        const originalIdx = filteredRef.current ? filteredRef.current[geoIdx] : geoIdx;
+        const pt = fromRef.current?.[originalIdx];
         if (!pt) { onHover(null); return; }
         onHover({ clientX: e.clientX, clientY: e.clientY, dataset: pt.dataset, classname: pt.classname ?? null });
     }
@@ -195,14 +201,14 @@ function ScatterPoints({ csvs, sliderValue, bounds, onHover }) {
     );
 }
 
-function BasePoints({ baseData, bounds }) {
+function BasePoints({ baseData, bounds, filteredIndices }) {
     const ptsRef = useRef();
 
     useEffect(() => {
         const pts = ptsRef.current;
         if (!pts || !baseData || !bounds) return;
-        buildGeometry(pts, baseData, baseData, 0, bounds);
-    }, [baseData, bounds]);
+        buildGeometry(pts, baseData, baseData, 0, bounds, filteredIndices);
+    }, [baseData, bounds, filteredIndices]);
 
     return (
         <points ref={ptsRef}>
@@ -213,7 +219,7 @@ function BasePoints({ baseData, bounds }) {
 }
 
 // ── Per-method 3D canvas ──────────────────────────────────────────────
-function MethodCanvas3D({ method, csvs, sliderValue, bounds, loading, showAxes, showPlane, axesOpacity, planeOpacity, sharedCameraRef }) {
+function MethodCanvas3D({ method, csvs, sliderValue, bounds, loading, showAxes, showPlane, axesOpacity, planeOpacity, sharedCameraRef, filteredIndices }) {
     const containerRef = useRef(null);
     const [tooltip, setTooltip] = useState(null);
 
@@ -235,7 +241,7 @@ function MethodCanvas3D({ method, csvs, sliderValue, bounds, loading, showAxes, 
                 style={{ background: "#0f0f1a" }}
                 onCreated={({ raycaster }) => { raycaster.params.Points.threshold = 0.5; }}
             >
-                <ScatterPoints csvs={csvs} sliderValue={sliderValue} bounds={bounds} onHover={handleHover} />
+                <ScatterPoints csvs={csvs} sliderValue={sliderValue} bounds={bounds} onHover={handleHover} filteredIndices={filteredIndices} />
                 {showAxes && <SceneAxes size={SCENE_HALF} opacity={axesOpacity} />}
                 {showPlane && <AxisPlanes opacity={planeOpacity} />}
                 <CameraSync sharedRef={sharedCameraRef} canvasId={method} />
@@ -265,11 +271,11 @@ function MethodCanvas3D({ method, csvs, sliderValue, bounds, loading, showAxes, 
 }
 
 // ── Standalone base canvas ────────────────────────────────────────────
-function BaseCanvas3D({ baseData, bounds, showAxes, showPlane, axesOpacity, planeOpacity, sharedCameraRef }) {
+function BaseCanvas3D({ baseData, bounds, showAxes, showPlane, axesOpacity, planeOpacity, sharedCameraRef, filteredIndices }) {
     return (
         <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-[var(--color-honeydew)]/30 border-dashed">
             <Canvas camera={{ position: [0, 0, 40], fov: 60 }} style={{ background: "#0f0f1a" }}>
-                <BasePoints baseData={baseData} bounds={bounds} />
+                <BasePoints baseData={baseData} bounds={bounds} filteredIndices={filteredIndices} />
                 {showAxes && <SceneAxes size={SCENE_HALF} opacity={axesOpacity} />}
                 {showPlane && <AxisPlanes opacity={planeOpacity} />}
                 <CameraSync sharedRef={sharedCameraRef} canvasId="__base__" />
@@ -299,6 +305,8 @@ export default function TSNETransition3D({ className }) {
     const [showBase, setShowBase]         = useState(false);
     const [isPlaying, setIsPlaying]       = useState(false);
     const [speed, setSpeed]               = useState("1");
+    const [sampleLimit, setSampleLimit]   = useState(9999);
+    const [classLimit, setClassLimit]     = useState(10);
 
     const csvCache       = useRef({});
     const loadTrigged    = useRef(new Set());
@@ -400,6 +408,46 @@ export default function TSNETransition3D({ className }) {
         return null;
     }, [selected, csvsByMethod]);
 
+    const maxSamplesPerDataset = useMemo(() => {
+        if (!baseData) return 100;
+        const counts = {};
+        for (const p of baseData) counts[p.dataset] = (counts[p.dataset] || 0) + 1;
+        return Math.max(...Object.values(counts), 1);
+    }, [baseData]);
+
+    const filteredIndices = useMemo(() => {
+        if (!baseData) return null;
+
+        // First pass: determine the first classLimit unique labels per dataset
+        const allowedClasses = {};
+        let classFilterActive = false;
+        for (const p of baseData) {
+            if (!allowedClasses[p.dataset]) allowedClasses[p.dataset] = new Set();
+            const s = allowedClasses[p.dataset];
+            if (!s.has(p.label)) {
+                if (s.size >= classLimit) classFilterActive = true;
+                else s.add(p.label);
+            }
+        }
+
+        const noSampleFilter = sampleLimit >= maxSamplesPerDataset;
+        if (!classFilterActive && noSampleFilter) return null;
+
+        // Second pass: collect indices that pass both filters
+        const sampleCounts = {};
+        const indices = [];
+        for (let i = 0; i < baseData.length; i++) {
+            const p = baseData[i];
+            if (!allowedClasses[p.dataset]?.has(p.label)) continue;
+            if (!noSampleFilter) {
+                sampleCounts[p.dataset] = (sampleCounts[p.dataset] || 0) + 1;
+                if (sampleCounts[p.dataset] > sampleLimit) continue;
+            }
+            indices.push(i);
+        }
+        return indices;
+    }, [baseData, sampleLimit, classLimit, maxSamplesPerDataset]);
+
     function applySnap(raw) {
         if (!snapEnabled) return raw;
         const nearest = Math.round(raw / 100) * 100;
@@ -442,6 +490,7 @@ export default function TSNETransition3D({ className }) {
                             axesOpacity={axesOpacity}
                             planeOpacity={planeOpacity}
                             sharedCameraRef={sharedCameraRef}
+                            filteredIndices={filteredIndices}
                         />
                     )}
                     {selected.map(m => (
@@ -457,6 +506,7 @@ export default function TSNETransition3D({ className }) {
                             axesOpacity={axesOpacity}
                             planeOpacity={planeOpacity}
                             sharedCameraRef={sharedCameraRef}
+                            filteredIndices={filteredIndices}
                         />
                     ))}
                 </div>
@@ -533,7 +583,7 @@ export default function TSNETransition3D({ className }) {
                     </button>
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-[var(--color-honeydew)]/50 w-10">Axes</span>
                         <input
@@ -555,6 +605,32 @@ export default function TSNETransition3D({ className }) {
                             className="w-28 accent-[var(--color-magenta)] cursor-pointer"
                         />
                         <span className="text-xs text-[var(--color-honeydew)]/40 w-8 text-right">{Math.round(planeOpacity * 100)}%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-[var(--color-honeydew)]/50 w-14">Samples</span>
+                        <input
+                            type="range"
+                            min={1}
+                            max={maxSamplesPerDataset}
+                            value={Math.min(sampleLimit, maxSamplesPerDataset)}
+                            onChange={e => setSampleLimit(Number(e.target.value))}
+                            className="w-28 accent-[var(--color-magenta)] cursor-pointer"
+                        />
+                        <span className="text-xs text-[var(--color-honeydew)]/40 w-10 text-right">
+                            {sampleLimit >= maxSamplesPerDataset ? "All" : `${sampleLimit}/ds`}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-[var(--color-honeydew)]/50 w-14">Classes</span>
+                        <input
+                            type="range"
+                            min={1}
+                            max={10}
+                            value={classLimit}
+                            onChange={e => setClassLimit(Number(e.target.value))}
+                            className="w-28 accent-[var(--color-magenta)] cursor-pointer"
+                        />
+                        <span className="text-xs text-[var(--color-honeydew)]/40 w-6 text-right">{classLimit}</span>
                     </div>
                 </div>
                 <div className="relative w-full">
