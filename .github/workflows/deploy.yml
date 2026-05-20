@@ -1,0 +1,88 @@
+name: Deploy Full-Stack App to AWS
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # ----------------------------------------------------
+  # JOB 1: BUILD AND DEPLOY PYTHON BACKEND TO LAMBDA
+  # ----------------------------------------------------
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole # Replace this!
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and Push Backend Docker Image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: my-lambda-backend-repo # Replace with your ECR repo name
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # NOTICE THE './backend' AT THE END OF THE BUILD COMMAND
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG ./backend
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker tag $REGISTRY/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REPOSITORY:latest
+          docker push $REGISTRY/$REPOSITORY:latest
+
+      # - name: Update Lambda Function Code
+      #   env:
+      #     REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+      #     REPOSITORY: my-lambda-backend-repo # Replace this!
+      #     IMAGE_TAG: ${{ github.sha }}
+      #     FUNCTION_NAME: my-python-lambda-app # Replace with your Lambda Name!
+      #   run: |
+      #     aws lambda update-function-code \
+      #       --function-name $FUNCTION_NAME \
+      #       --image-uri $REGISTRY/$REPOSITORY:$IMAGE_TAG
+
+  # ----------------------------------------------------
+  # JOB 2: BUILD AND DEPLOY REACT FRONTEND TO S3
+  # ----------------------------------------------------
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole # Same role!
+          aws-region: us-east-1
+
+      - name: Install and Build React App
+        env:
+          # Injects your backend Lambda URL into React during compilation
+          VITE_API_URL: https://your-lambda-url.amazonaws.com # Replace with your Lambda Function URL!
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      - name: Sync Files to AWS S3 Website Bucket
+        run: |
+          # Syncs the compiled HTML/JS folder to your S3 bucket and deletes old files
+          # Note: If using Vite, the folder is './frontend/dist'. If using Create-React-App, it's './frontend/build'.
+          aws s3 sync ./frontend/dist s3://your-react-s3-bucket-name --delete

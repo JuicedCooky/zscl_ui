@@ -13,10 +13,14 @@ from PIL import Image
 import os
 import io
 import csv as _csv
+import boto3
 
 
 base_path = os.path.dirname(__file__)
 frontend_path = os.path.join(os.path.dirname(base_path), "frontend")
+
+BUCKET = "continual-learning-bucket"
+s3 = boto3.client("s3")
 
 
 app = FastAPI()
@@ -37,8 +41,6 @@ uploaded_image = None
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-models_dir = os.path.join(base_path, "models")
-
 METHOD_DISPLAY = {
     "finetune": "Finetune",
     "zscl": "ZSCL",
@@ -52,36 +54,37 @@ def make_display_name(method_folder: str, filename: str) -> str:
     return f"{method} - {dataset.title()}"
 
 def discover_models():
-    """Scan models/ and return sorted list of dicts with path, rel, display_name, group."""
-    found = []
-    if not os.path.exists(models_dir):
-        return found
-    # Root-level .pth files (e.g. base.pth) — no subfolder
-    for fname in sorted(os.listdir(models_dir)):
-        fpath = os.path.join(models_dir, fname)
-        if os.path.isfile(fpath) and fname.endswith(".pth"):
-            display = os.path.splitext(fname)[0].replace("_", " ").replace("-", " ").title()
-            found.append({
-                "path": fpath,
-                "rel": fname,
-                "display_name": display,
-                "group": "base",
-            })
-    # Subfolder models — grouped by folder name
-    for folder in sorted(os.listdir(models_dir)):
-        folder_path = os.path.join(models_dir, folder)
-        if not os.path.isdir(folder_path):
-            continue
-        for fname in sorted(os.listdir(folder_path)):
-            if not fname.endswith(".pth"):
+    """List models/ in S3 and return sorted list of dicts with path, rel, display_name, group."""
+    root_files = []
+    subfolder_files = []
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=BUCKET, Prefix="models/"):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            rel = key[len("models/"):]
+            if not rel:
                 continue
-            found.append({
-                "path": os.path.join(folder_path, fname),
-                "rel": f"{folder}/{fname}",
-                "display_name": make_display_name(folder, fname),
-                "group": folder,
-            })
-    return found
+            parts = rel.split("/")
+            if len(parts) == 1 and parts[0].endswith(".pth"):
+                fname = parts[0]
+                display = os.path.splitext(fname)[0].replace("_", " ").replace("-", " ").title()
+                root_files.append({
+                    "path": key,
+                    "rel": fname,
+                    "display_name": display,
+                    "group": "base",
+                })
+            elif len(parts) == 2 and parts[1].endswith(".pth"):
+                folder, fname = parts
+                subfolder_files.append({
+                    "path": key,
+                    "rel": f"{folder}/{fname}",
+                    "display_name": make_display_name(folder, fname),
+                    "group": folder,
+                })
+    root_files.sort(key=lambda x: x["rel"])
+    subfolder_files.sort(key=lambda x: x["rel"])
+    return root_files + subfolder_files
 
 # Active state keyed by abs path — persists across re-scans
 model_active_state: dict = {}
@@ -126,10 +129,13 @@ include_base_clip = False
 _, _, pre_process = clip.load("ViT-B/16", device=device, jit=False)
 
 
-def load_model(path):
-    """Load a single CLIP model from checkpoint"""
+def load_model(s3_key):
+    """Download a CLIP checkpoint from S3 and load it."""
     model, _, _ = clip.load("ViT-B/16", device=device, jit=False)
-    checkpoint = torch.load(path)
+    buf = io.BytesIO()
+    s3.download_fileobj(BUCKET, s3_key, buf)
+    buf.seek(0)
+    checkpoint = torch.load(buf, map_location=device)
     model.load_state_dict(checkpoint["state_dict"], strict=False)
     model.eval()
     return model
@@ -457,25 +463,26 @@ def setSequentialModels(data: dict = Body(...)):
         if method not in METHOD_FOLDERS:
             return {"error": f"Unknown method: {method}"}
 
-        # Construct model path: models/{method}/{dataset}.pth
+        # Construct S3 prefix: models/{method}/
         method_folder = METHOD_FOLDERS[method]
-        models_dir = os.path.join(base_path, "models", method_folder)
+        s3_prefix = f"models/{method_folder}/"
 
         # Find the model file for this dataset
         dataset_name = DATASET_NAMES[dataset_index].lower()
 
-        # Look for model files matching the dataset name
+        # Look for model files matching the dataset name in S3
         model_file = None
-        if os.path.exists(models_dir):
-            for filename in os.listdir(models_dir):
-                if filename.endswith(".pth") and dataset_name in filename.lower():
-                    model_file = filename
-                    break
+        response = s3.list_objects_v2(Bucket=BUCKET, Prefix=s3_prefix)
+        for obj in response.get("Contents", []):
+            filename = obj["Key"].split("/")[-1]
+            if filename.endswith(".pth") and dataset_name in filename.lower():
+                model_file = filename
+                break
 
         if not model_file:
             return {"error": f"Model not found for {config.get('dataset', 'unknown')} with method {method}"}
 
-        model_path = os.path.join(models_dir, model_file)
+        model_path = f"models/{method_folder}/{model_file}"
 
         # Avoid duplicates
         if model_path not in sequential_model_paths:
