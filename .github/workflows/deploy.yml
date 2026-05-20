@@ -69,8 +69,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: 042722598941.dkr.ecr.us-east-2.amazonaws.com/continual-learning-app # Same role!
-          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole # Same role!
+          aws-region: us-east-2
 
       - name: Install and Build React App
         env:
