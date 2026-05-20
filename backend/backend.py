@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Body
+﻿from fastapi import FastAPI, UploadFile, File, Body
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from botocore.exceptions import ClientError
@@ -62,10 +62,10 @@ def discover_models():
     root_files = []
     subfolder_files = []
     paginator = s3.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=BUCKET, Prefix="models/"):
+    for page in paginator.paginate(Bucket=BUCKET, Prefix="backend/models/"):
         for obj in page.get("Contents", []):
             key = obj["Key"]
-            rel = key[len("models/"):]
+            rel = key[len("backend/models/"):]
             if not rel:
                 continue
             parts = rel.split("/")
@@ -125,7 +125,7 @@ def _get_base_state_dict():
     global _base_state_dict_cache
     if _base_state_dict_cache is None:
         buf = io.BytesIO()
-        s3.download_fileobj(BUCKET, "models/base.pth", buf)
+        s3.download_fileobj(BUCKET, "backend/models/base.pth", buf)
         buf.seek(0)
         _base_state_dict_cache = torch.load(buf, map_location=device)["state_dict"]
     return _base_state_dict_cache
@@ -133,7 +133,7 @@ def _get_base_state_dict():
 def load_model(s3_key):
     """Build CLIP architecture from base.pth, then overlay fine-tuned weights from S3."""
     model = _build_clip_model(_get_base_state_dict()).to(device)
-    if s3_key != "models/base.pth":
+    if s3_key != "backend/models/base.pth":
         buf = io.BytesIO()
         s3.download_fileobj(BUCKET, s3_key, buf)
         buf.seek(0)
@@ -168,7 +168,7 @@ def initialize_backend():
     initialized = True
     print("Initialization complete!")
 
-CLASSNAMES_KEY = "classes/custom_classes.txt"
+CLASSNAMES_KEY = "backend/classes/custom_classes.txt"
 
 def _load_classnames():
     buf = io.BytesIO()
@@ -182,20 +182,20 @@ prompt_suf = ""
 
 @app.get("/tsne/base")
 def getTsneBase():
-    obj = s3.get_object(Bucket=BUCKET, Key="tsne_images/base_tsne.png")
+    obj = s3.get_object(Bucket=BUCKET, Key="backend/tsne_images/base_tsne.png")
     return StreamingResponse(obj["Body"], media_type="image/png")
 
 @app.get("/tsne/methods")
 def getTsneMethods():
-    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="tsne_images/", Delimiter="/")
-    methods = sorted(p["Prefix"][len("tsne_images/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
+    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="backend/tsne_images/", Delimiter="/")
+    methods = sorted(p["Prefix"][len("backend/tsne_images/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
     return {"methods": methods}
 
 @app.get("/tsne/{method}/list")
 def listTsneImages(method: str):
     if ".." in method:
         return {"error": "Method not found"}
-    prefix = f"tsne_images/{method}/"
+    prefix = f"backend/tsne_images/{method}/"
     resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
     files = sorted(obj["Key"][len(prefix):] for obj in resp.get("Contents", []) if obj["Key"].endswith(".png"))
     return {"images": files}
@@ -205,7 +205,7 @@ def getTsneImage(method: str, filename: str):
     if ".." in method or ".." in filename:
         return {"error": "Invalid path"}
     try:
-        obj = s3.get_object(Bucket=BUCKET, Key=f"tsne_images/{method}/{filename}")
+        obj = s3.get_object(Bucket=BUCKET, Key=f"backend/tsne_images/{method}/{filename}")
         return StreamingResponse(obj["Body"], media_type="image/png")
     except ClientError:
         return {"error": "Image not found"}
@@ -218,13 +218,13 @@ def parse_tsne_csv(s3_key: str):
 
 @app.get("/tsne-csv/base")
 def getTsneCsvBase():
-    return parse_tsne_csv("tsne_csv/base_tsne.csv")
+    return parse_tsne_csv("backend/tsne_csv/base_tsne.csv")
 
 @app.get("/tsne-csv/{method}/list")
 def listTsneCsvFiles(method: str):
     if ".." in method:
         return {"error": "Invalid path"}
-    prefix = f"tsne_csv/{method}/"
+    prefix = f"backend/tsne_csv/{method}/"
     resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
     if not resp.get("Contents"):
         return {"error": "Method not found"}
@@ -235,7 +235,7 @@ def getTsneCsvFile(method: str, filename: str):
     if ".." in method or ".." in filename:
         return {"error": "Invalid path"}
     try:
-        return parse_tsne_csv(f"tsne_csv/{method}/{filename}")
+        return parse_tsne_csv(f"backend/tsne_csv/{method}/{filename}")
     except ClientError:
         return {"error": "File not found"}
 
@@ -247,19 +247,19 @@ def parse_tsne_csv_3d(s3_key: str):
 
 @app.get("/tsne-csv-3d/methods")
 def getTsneCsv3dMethods():
-    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="tsne_csv_3d/", Delimiter="/")
-    methods = sorted(p["Prefix"][len("tsne_csv_3d/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
+    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="backend/tsne_csv_3d/", Delimiter="/")
+    methods = sorted(p["Prefix"][len("backend/tsne_csv_3d/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
     return {"methods": methods}
 
 @app.get("/tsne-csv-3d/base")
 def getTsneCsv3dBase():
-    return parse_tsne_csv_3d("tsne_csv_3d/base_tsne.csv")
+    return parse_tsne_csv_3d("backend/tsne_csv_3d/base_tsne.csv")
 
 @app.get("/tsne-csv-3d/{method}/list")
 def listTsneCsv3dFiles(method: str):
     if ".." in method:
         return {"error": "Invalid path"}
-    prefix = f"tsne_csv_3d/{method}/"
+    prefix = f"backend/tsne_csv_3d/{method}/"
     resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
     if not resp.get("Contents"):
         return {"error": "Method not found"}
@@ -270,7 +270,7 @@ def getTsneCsv3dFile(method: str, filename: str):
     if ".." in method or ".." in filename:
         return {"error": "Invalid path"}
     try:
-        return parse_tsne_csv_3d(f"tsne_csv_3d/{method}/{filename}")
+        return parse_tsne_csv_3d(f"backend/tsne_csv_3d/{method}/{filename}")
     except ClientError:
         return {"error": "File not found"}
 
@@ -489,7 +489,7 @@ def setSequentialModels(data: dict = Body(...)):
             return {"error": f"Unknown method: {method}"}
 
         method_folder = METHOD_FOLDERS[method]
-        s3_prefix = f"models/{method_folder}/"
+        s3_prefix = f"backend/models/{method_folder}/"
         dataset_name = DATASET_NAMES[dataset_index].lower()
 
         model_file = None
@@ -503,7 +503,7 @@ def setSequentialModels(data: dict = Body(...)):
         if not model_file:
             return {"error": f"Model not found for {config.get('dataset', 'unknown')} with method {method}"}
 
-        model_path = f"models/{method_folder}/{model_file}"
+        model_path = f"backend/models/{method_folder}/{model_file}"
 
         if model_path not in sequential_model_paths:
             sequential_model_paths.append(model_path)
@@ -542,7 +542,7 @@ def predictSequential():
         all_results = {}
 
         if include_base_clip:
-            base_model = load_model("models/base.pth")
+            base_model = load_model("backend/models/base.pth")
             with torch.no_grad():
                 logits_per_image, _ = base_model(image, text)
                 probs = logits_per_image.softmax(dim=-1).cpu().numpy()

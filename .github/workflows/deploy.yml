@@ -81,7 +81,8 @@ jobs:
 
       - name: Sync Files to AWS S3 Website Bucket
         run: |
-          aws s3 sync ./frontend/dist s3://continual-learning-bucket --delete
+          # Added /frontend to the destination path
+          aws s3 sync ./frontend/dist s3://continual-learning-bucket/frontend --delete
 
       # ====================================================
       # ADDED: CLEAR THE CLOUDFRONT CACHE
