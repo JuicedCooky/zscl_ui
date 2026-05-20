@@ -1,7 +1,7 @@
 # Use the official AWS Lambda Python base image
 FROM public.ecr.aws/lambda/python:3.11
 
-RUN microdnf install -y git && microdnf clean all
+RUN yum install -y git && yum clean all
 
 # Copy your requirements.txt into the container
 COPY requirements.txt ${LAMBDA_TASK_ROOT}
