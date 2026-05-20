@@ -1,8 +1,8 @@
 # Use the official AWS Lambda Python base image
 FROM public.ecr.aws/lambda/python:3.11
 
-# We only need git now to pull that ImageNetV2 library
-RUN yum install -y git && yum clean all
+# Install git and standard compilers to satisfy build scripts
+RUN yum install -y git gcc gcc-c++ python3-devel && yum clean all
 
 # Copy your requirements.txt into the container
 COPY requirements.txt ${LAMBDA_TASK_ROOT}
