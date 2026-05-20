@@ -41,16 +41,16 @@ jobs:
           docker tag $REGISTRY/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REPOSITORY:latest
           docker push $REGISTRY/$REPOSITORY:latest
 
-      # - name: Update Lambda Function Code
-      #   env:
-      #     REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-      #     REPOSITORY: my-lambda-backend-repo # Replace this!
-      #     IMAGE_TAG: ${{ github.sha }}
-      #     FUNCTION_NAME: my-python-lambda-app # Replace with your Lambda Name!
-      #   run: |
-      #     aws lambda update-function-code \
-      #       --function-name $FUNCTION_NAME \
-      #       --image-uri $REGISTRY/$REPOSITORY:$IMAGE_TAG
+      - name: Update Lambda Function Code
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: continual-learning-app  # Replace this!
+          IMAGE_TAG: ${{ github.sha }}
+          FUNCTION_NAME: continual-learning-backend  # Replace with your Lambda Name!
+        run: |
+          aws lambda update-function-code \
+            --function-name $FUNCTION_NAME \
+            --image-uri $REGISTRY/$REPOSITORY:$IMAGE_TAG
 
   # ----------------------------------------------------
   # JOB 2: BUILD AND DEPLOY REACT FRONTEND TO S3
@@ -75,7 +75,7 @@ jobs:
       - name: Install and Build React App
         env:
           # Injects your backend Lambda URL into React during compilation
-          VITE_API_URL: https://your-lambda-url.amazonaws.com # Replace with your Lambda Function URL!
+          VITE_API_URL: https://dwi6l4femhc3z22kc6tmpheheq0wdpff.lambda-url.us-east-2.on.aws/ # Replace with your Lambda Function URL!
         run: |
           cd frontend
           npm install
