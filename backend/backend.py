@@ -392,11 +392,12 @@ def getModels():
 
 
 @app.post("/setactivemodels")
-def setActiveModels(data: list = Body(...)):
+def setActiveModels(data: list = Body(...), preload: bool = True):
     """
     Set which models are active. Multiple models can be active at the same time.
     Receives an array of 0s and 1s representing inactive/active status.
     Example: [1, 1] means both models active, [1, 0] means only first active
+    When preload=False, only updates active state without loading models into memory.
     """
     global active_models, loaded_models, model_paths
 
@@ -412,15 +413,61 @@ def setActiveModels(data: list = Body(...)):
     for i, is_active in enumerate(active_models):
         model_active_state[model_paths[i]] = (is_active == 1)
 
-    # Load all active models that aren't already loaded
-    for i, is_active in enumerate(active_models):
-        if is_active == 1 and model_paths[i] not in loaded_models:
-            try:
-                loaded_models[model_paths[i]] = load_model(model_paths[i])
-            except Exception as e:
-                return {"error": f"Failed to load model {model_paths[i]}: {str(e)}"}
+    if preload:
+        for i, is_active in enumerate(active_models):
+            if is_active == 1 and model_paths[i] not in loaded_models:
+                try:
+                    loaded_models[model_paths[i]] = load_model(model_paths[i])
+                except Exception as e:
+                    return {"error": f"Failed to load model {model_paths[i]}: {str(e)}"}
 
     return {"status": "ok", "active": active_models}
+
+
+@app.get("/predict_lowmem")
+def predict_lowmem():
+    """Load each active model one at a time, predict, then unload before loading the next."""
+    global uploaded_image, class_names, prompt_pre, prompt_suf, active_models, model_paths
+
+    if uploaded_image is None:
+        return {"error": "No image uploaded yet"}
+
+    active_model_paths = [model_paths[i] for i, is_active in enumerate(active_models) if is_active == 1]
+    if not active_model_paths:
+        return {"error": "No active models selected"}
+
+    if prompt_pre.endswith(" "):
+        prompt_pre = prompt_pre[:-1]
+    prompts = [f"{prompt_pre} {name} {prompt_suf}".strip() for name in class_names]
+
+    try:
+        image = pre_process(uploaded_image).unsqueeze(0).to(device)
+        text = clip.tokenize(prompts).to(device)
+        all_results = {}
+
+        for model_path in active_model_paths:
+            model = load_model(model_path)
+            model_name = make_display_name(
+                os.path.basename(os.path.dirname(model_path)),
+                os.path.basename(model_path),
+            )
+            with torch.no_grad():
+                logits_per_image, _ = model(image, text)
+                probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+
+            result = dict(zip(prompts, probs.tolist()[0]))
+            result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
+            all_results[model_name] = result
+
+            del model
+            if device.type == "cuda":
+                torch.cuda.empty_cache()
+
+        return all_results
+
+    except Exception as e:
+        print("Error:", e)
+        return {"error": str(e)}
 
 
 @app.post("/setsequentialmodels")
