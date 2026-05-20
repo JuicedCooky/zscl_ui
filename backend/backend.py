@@ -15,14 +15,12 @@ import csv as _csv
 import boto3
 
 base_path = os.path.dirname(__file__)
-frontend_path = os.path.join(os.path.dirname(base_path), "frontend")
 
 BUCKET = "continual-learning-bucket"
 s3 = boto3.client("s3")
 
 app = FastAPI()
 
-app.mount("/assets", StaticFiles(directory=os.path.join(frontend_path,"dist/assets")), name='assets')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -261,9 +259,6 @@ def getTsneCsv3dFile(method: str, filename: str):
         return {"error": "File not found"}
     return parse_tsne_csv_3d(path)
 
-@app.get("/")
-def default():
-    return FileResponse(os.path.join(frontend_path, "dist/index.html"))
 
 @app.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
