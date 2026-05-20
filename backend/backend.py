@@ -5,9 +5,16 @@ from botocore.exceptions import ClientError
 from mangum import Mangum  # <-- ADDED MANGUM
 
 import torch
-import clip  # <-- KEPT THIS, REMOVED THE RELATIVE DOT IMPORT
+import clip
+from clip.model import build_model as _build_clip_model
 
 from PIL import Image
+from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
+try:
+    from torchvision.transforms import InterpolationMode
+    _BICUBIC = InterpolationMode.BICUBIC
+except ImportError:
+    _BICUBIC = Image.BICUBIC
 
 import os
 import io
@@ -29,6 +36,14 @@ app.add_middleware(
 
 uploaded_image = None
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+pre_process = Compose([
+    Resize(224, interpolation=_BICUBIC),
+    CenterCrop(224),
+    lambda image: image.convert("RGB"),
+    ToTensor(),
+    Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+])
 
 METHOD_DISPLAY = {
     "finetune": "Finetune",
@@ -77,7 +92,6 @@ def discover_models():
 
 # --- LAZY LOADING VARIABLES ---
 initialized = False
-pre_process = None
 model_active_state: dict = {}
 model_paths: list = []
 active_models: list = []
@@ -105,27 +119,37 @@ def sync_models():
     active_models = [1 if model_active_state.get(p, False) else 0 for p in model_paths]
     return discovered
 
+_base_state_dict_cache = None
+
+def _get_base_state_dict():
+    global _base_state_dict_cache
+    if _base_state_dict_cache is None:
+        buf = io.BytesIO()
+        s3.download_fileobj(BUCKET, "models/base.pth", buf)
+        buf.seek(0)
+        _base_state_dict_cache = torch.load(buf, map_location=device)["state_dict"]
+    return _base_state_dict_cache
+
 def load_model(s3_key):
-    """Download a CLIP checkpoint from S3 and load it."""
-    model, _, _ = clip.load("ViT-B/16", device=device, jit=False)
-    buf = io.BytesIO()
-    s3.download_fileobj(BUCKET, s3_key, buf)
-    buf.seek(0)
-    checkpoint = torch.load(buf, map_location=device)
-    model.load_state_dict(checkpoint["state_dict"], strict=False)
+    """Build CLIP architecture from base.pth, then overlay fine-tuned weights from S3."""
+    model = _build_clip_model(_get_base_state_dict()).to(device)
+    if s3_key != "models/base.pth":
+        buf = io.BytesIO()
+        s3.download_fileobj(BUCKET, s3_key, buf)
+        buf.seek(0)
+        checkpoint = torch.load(buf, map_location=device)
+        model.load_state_dict(checkpoint["state_dict"], strict=False)
     model.eval()
     return model
 
 def initialize_backend():
     """Deferred heavy loading to bypass AWS Lambda's 10-second init limit."""
-    global initialized, pre_process, loaded_models, model_paths
-    
+    global initialized, loaded_models, model_paths
+
     if initialized:
         return
-        
+
     print("Initializing ML assets...")
-    _, _, pre_process = clip.load("ViT-B/16", device=device, jit=False)
-    
     try:
         class_names = _load_classnames()
     except Exception as e:
