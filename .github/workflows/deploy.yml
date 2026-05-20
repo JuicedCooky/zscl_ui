@@ -85,4 +85,4 @@ jobs:
         run: |
           # Syncs the compiled HTML/JS folder to your S3 bucket and deletes old files
           # Note: If using Vite, the folder is './frontend/dist'. If using Create-React-App, it's './frontend/build'.
-          aws s3 sync ./frontend/dist s3://your-react-s3-bucket-name --delete
+          aws s3 sync ./frontend/dist s3://continual-learning-bucket --delete
