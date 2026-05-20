@@ -10,5 +10,6 @@ python-multipart
 torch
 torchvision
 numpy
+mangum
 git+https://github.com/openai/CLIP.git
 git+https://github.com/modestyachts/ImageNetV2_pytorch.git

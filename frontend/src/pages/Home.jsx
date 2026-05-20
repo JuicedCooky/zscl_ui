@@ -35,7 +35,7 @@ export default function Home({className}) {
     const [limitProbabilities, setLimitProbabilities] = useState("5");
     const [showOnlyCorrect, setShowOnlyCorrect] = useState(false);
     const [sortByScore, setSortByScore] = useState(null); // null | "desc" | "asc"
-    const [lowMemMode, setLowMemMode] = useState(false);
+    const [lowMemMode, setLowMemMode] = useState(true);
 
     const listedProbOptions = ["1","5","10","20","50","100","all"];
 
