@@ -22,7 +22,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole # Replace this!
+          role-to-assume: 042722598941.dkr.ecr.us-east-2.amazonaws.com/continual-learning-app # Replace this!
           aws-region: us-east-1
 
       - name: Login to Amazon ECR
@@ -69,7 +69,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole # Same role!
+          role-to-assume: 042722598941.dkr.ecr.us-east-2.amazonaws.com/continual-learning-app # Same role!
           aws-region: us-east-1
 
       - name: Install and Build React App
