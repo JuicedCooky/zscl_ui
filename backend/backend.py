@@ -126,6 +126,13 @@ def initialize_backend():
     print("Initializing ML assets...")
     _, _, pre_process = clip.load("ViT-B/16", device=device, jit=False)
     
+    try:
+        class_names = _load_classnames()
+    except Exception as e:
+        print(f"Failed to load classnames from S3: {e}")
+        # Fallback default so endpoints don't crash entirely
+        class_names = ["object"]
+
     sync_models()
     
     if model_paths:
@@ -144,7 +151,7 @@ def _load_classnames():
     s3.download_fileobj(BUCKET, CLASSNAMES_KEY, buf)
     return [l.strip() for l in buf.getvalue().decode("utf-8").splitlines() if l.strip()]
 
-class_names = _load_classnames()
+class_names = []
 
 prompt_pre = "a photo of a"
 prompt_suf = ""
