@@ -3,7 +3,7 @@ import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL;
 
 const STEPS = ["Base", "DTD", "MNIST", "EuroSAT", "Flowers"];
 const SLIDER_MAX = (STEPS.length - 1) * 100;

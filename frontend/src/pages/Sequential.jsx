@@ -1,5 +1,7 @@
-import React from "react";
+﻿import React from "react";
 import { useState, useCallback } from "react";
+
+const API = import.meta.env.VITE_API_URL;
 import { UploadImage } from "../components/UploadImage";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { ClassTextArea } from "../components/ClassTextArea";
@@ -66,14 +68,14 @@ export default function Sequential({ className }) {
 
         if (preview != null) {
             if (currentImageData != null) {
-                await fetch("http://localhost:8000/upload", {
+                await fetch(`${API}/upload`, {
                     method: "POST",
                     body: currentImageData,
                 });
             }
 
             // Send all selected models to backend
-            await fetch("http://localhost:8000/setsequentialmodels", {
+            await fetch(`${API}/setsequentialmodels`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -83,7 +85,7 @@ export default function Sequential({ className }) {
                 })
             });
 
-            const res = await fetch("http://localhost:8000/predictsequential", {
+            const res = await fetch(`${API}/predictsequential`, {
                 method: "GET",
             });
 
@@ -103,12 +105,12 @@ export default function Sequential({ className }) {
 
     async function displayClasses() {
         setIsGettingClasses(true);
-        const res = await fetch("http://localhost:8000/getclassnames", {
+        const res = await fetch(`${API}/getclassnames`, {
             method: "GET",
         });
         setClasses(await res.json());
 
-        const prompt_res = await fetch("http://localhost:8000/getprompt", {
+        const prompt_res = await fetch(`${API}/getprompt`, {
             method: "GET",
         });
 
@@ -120,7 +122,7 @@ export default function Sequential({ className }) {
 
     async function saveClasses(classes, prompt) {
         const text = classes;
-        const res = await fetch("http://localhost:8000/saveclassnames", {
+        const res = await fetch(`${API}/saveclassnames`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -128,7 +130,7 @@ export default function Sequential({ className }) {
             body: JSON.stringify({ text })
         });
 
-        const res_prompt = await fetch("http://localhost:8000/saveprompt", {
+        const res_prompt = await fetch(`${API}/saveprompt`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

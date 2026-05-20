@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL;
 
 function labelFromFilename(filename) {
     const match = filename.match(/^\d+_(.+)_tsne\.png$/i);

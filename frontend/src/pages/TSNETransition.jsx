@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL;
 
 const STEPS = ["Base", "DTD", "MNIST", "EuroSAT", "Flowers"];
 const SLIDER_MAX = (STEPS.length - 1) * 100; // 400
