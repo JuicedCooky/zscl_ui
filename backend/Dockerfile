@@ -15,4 +15,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . ${LAMBDA_TASK_ROOT}
 
 # Tell Lambda where to send the traffic
-CMD [ "app.handler" ]
+CMD [ "backend.handler" ]
