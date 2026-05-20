@@ -23,7 +23,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole # Replace this!
-          aws-region: us-east-1
+          aws-region: us-east-2
 
       - name: Login to Amazon ECR
         id: login-ecr
