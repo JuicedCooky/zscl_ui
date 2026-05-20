@@ -1,3 +1,4 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
 tqdm
 ftfy
 regex
@@ -5,11 +6,9 @@ wilds
 pandas
 uvicorn
 fastapi
-clip
 python-multipart
---extra-index-url https://download.pytorch.org/whl/cpu
---only-binary numpy
-numpy==1.26.4
-torch==2.2.1+cpu
-torchvision==0.17.1+cpu
+torch
+torchvision
+numpy
+git+https://github.com/openai/CLIP.git
 git+https://github.com/modestyachts/ImageNetV2_pytorch.git
