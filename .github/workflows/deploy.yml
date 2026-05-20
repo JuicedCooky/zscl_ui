@@ -32,7 +32,7 @@ jobs:
       - name: Build and Push Backend Docker Image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: my-lambda-backend-repo # Replace with your ECR repo name
+          REPOSITORY: continual-learning-app # Replace with your ECR repo name
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # NOTICE THE './backend' AT THE END OF THE BUILD COMMAND
