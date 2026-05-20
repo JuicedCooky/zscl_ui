@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Body
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from botocore.exceptions import ClientError
 from mangum import Mangum  # <-- ADDED MANGUM
 
 import torch
@@ -13,8 +13,6 @@ import os
 import io
 import csv as _csv
 import boto3
-
-base_path = os.path.dirname(__file__)
 
 BUCKET = "continual-learning-bucket"
 s3 = boto3.client("s3")
@@ -139,125 +137,111 @@ def initialize_backend():
     initialized = True
     print("Initialization complete!")
 
-# Loading class names (fast enough for global scope)
-classname_path = os.path.join(base_path, "classes/custom_classes.txt") 
-with open(classname_path) as f:
-    lines = f.readlines()
-class_names = [line.strip() for line in lines]
+CLASSNAMES_KEY = "classes/custom_classes.txt"
+
+def _load_classnames():
+    buf = io.BytesIO()
+    s3.download_fileobj(BUCKET, CLASSNAMES_KEY, buf)
+    return [l.strip() for l in buf.getvalue().decode("utf-8").splitlines() if l.strip()]
+
+class_names = _load_classnames()
 
 prompt_pre = "a photo of a"
 prompt_suf = ""
 
-tsne_dir = os.path.join(base_path, "tsne_images")
-
 @app.get("/tsne/base")
 def getTsneBase():
-    path = os.path.join(tsne_dir, "base_tsne.png")
-    return FileResponse(path, media_type="image/png")
+    obj = s3.get_object(Bucket=BUCKET, Key="tsne_images/base_tsne.png")
+    return StreamingResponse(obj["Body"], media_type="image/png")
 
 @app.get("/tsne/methods")
 def getTsneMethods():
-    methods = sorted([d for d in os.listdir(tsne_dir) if os.path.isdir(os.path.join(tsne_dir, d))])
+    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="tsne_images/", Delimiter="/")
+    methods = sorted(p["Prefix"][len("tsne_images/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
     return {"methods": methods}
 
 @app.get("/tsne/{method}/list")
 def listTsneImages(method: str):
-    method_dir = os.path.join(tsne_dir, method)
-    if not os.path.isdir(method_dir) or ".." in method:
+    if ".." in method:
         return {"error": "Method not found"}
-    files = sorted([f for f in os.listdir(method_dir) if f.endswith(".png")])
+    prefix = f"tsne_images/{method}/"
+    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
+    files = sorted(obj["Key"][len(prefix):] for obj in resp.get("Contents", []) if obj["Key"].endswith(".png"))
     return {"images": files}
 
 @app.get("/tsne/{method}/{filename}")
 def getTsneImage(method: str, filename: str):
     if ".." in method or ".." in filename:
         return {"error": "Invalid path"}
-    path = os.path.join(tsne_dir, method, filename)
-    if not os.path.isfile(path):
+    try:
+        obj = s3.get_object(Bucket=BUCKET, Key=f"tsne_images/{method}/{filename}")
+        return StreamingResponse(obj["Body"], media_type="image/png")
+    except ClientError:
         return {"error": "Image not found"}
-    return FileResponse(path, media_type="image/png")
 
-tsne_csv_dir = os.path.join(base_path, "tsne_csv")
-
-def parse_tsne_csv(path: str):
-    rows = []
-    with open(path, newline="", encoding="utf-8") as f:
-        reader = _csv.DictReader(f)
-        for row in reader:
-            rows.append({
-                "x": float(row["x"]),
-                "y": float(row["y"]),
-                "label": int(row["label"]),
-                "classname": row["classname"],
-                "dataset": row["dataset"],
-            })
-    return rows
+def parse_tsne_csv(s3_key: str):
+    buf = io.BytesIO()
+    s3.download_fileobj(BUCKET, s3_key, buf)
+    reader = _csv.DictReader(io.StringIO(buf.getvalue().decode("utf-8")))
+    return [{"x": float(r["x"]), "y": float(r["y"]), "label": int(r["label"]), "classname": r["classname"], "dataset": r["dataset"]} for r in reader]
 
 @app.get("/tsne-csv/base")
 def getTsneCsvBase():
-    return parse_tsne_csv(os.path.join(tsne_csv_dir, "base_tsne.csv"))
+    return parse_tsne_csv("tsne_csv/base_tsne.csv")
 
 @app.get("/tsne-csv/{method}/list")
 def listTsneCsvFiles(method: str):
     if ".." in method:
         return {"error": "Invalid path"}
-    method_dir = os.path.join(tsne_csv_dir, method)
-    if not os.path.isdir(method_dir):
+    prefix = f"tsne_csv/{method}/"
+    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
+    if not resp.get("Contents"):
         return {"error": "Method not found"}
-    return {"files": sorted(f for f in os.listdir(method_dir) if f.endswith(".csv"))}
+    return {"files": sorted(obj["Key"][len(prefix):] for obj in resp["Contents"] if obj["Key"].endswith(".csv"))}
 
 @app.get("/tsne-csv/{method}/{filename}")
 def getTsneCsvFile(method: str, filename: str):
     if ".." in method or ".." in filename:
         return {"error": "Invalid path"}
-    path = os.path.join(tsne_csv_dir, method, filename)
-    if not os.path.isfile(path):
+    try:
+        return parse_tsne_csv(f"tsne_csv/{method}/{filename}")
+    except ClientError:
         return {"error": "File not found"}
-    return parse_tsne_csv(path)
 
-tsne_csv_3d_dir = os.path.join(base_path, "tsne_csv_3d")
-
-def parse_tsne_csv_3d(path: str):
-    rows = []
-    with open(path, newline="", encoding="utf-8") as f:
-        reader = _csv.DictReader(f)
-        for row in reader:
-            rows.append({
-                "x": float(row["x"]),
-                "y": float(row["y"]),
-                "z": float(row["z"]),
-                "label": int(row["label"]),
-                "classname": row["classname"],
-                "dataset": row["dataset"],
-            })
-    return rows
+def parse_tsne_csv_3d(s3_key: str):
+    buf = io.BytesIO()
+    s3.download_fileobj(BUCKET, s3_key, buf)
+    reader = _csv.DictReader(io.StringIO(buf.getvalue().decode("utf-8")))
+    return [{"x": float(r["x"]), "y": float(r["y"]), "z": float(r["z"]), "label": int(r["label"]), "classname": r["classname"], "dataset": r["dataset"]} for r in reader]
 
 @app.get("/tsne-csv-3d/methods")
 def getTsneCsv3dMethods():
-    methods = sorted([d for d in os.listdir(tsne_csv_3d_dir) if os.path.isdir(os.path.join(tsne_csv_3d_dir, d))])
+    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="tsne_csv_3d/", Delimiter="/")
+    methods = sorted(p["Prefix"][len("tsne_csv_3d/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
     return {"methods": methods}
 
 @app.get("/tsne-csv-3d/base")
 def getTsneCsv3dBase():
-    return parse_tsne_csv_3d(os.path.join(tsne_csv_3d_dir, "base_tsne.csv"))
+    return parse_tsne_csv_3d("tsne_csv_3d/base_tsne.csv")
 
 @app.get("/tsne-csv-3d/{method}/list")
 def listTsneCsv3dFiles(method: str):
     if ".." in method:
         return {"error": "Invalid path"}
-    method_dir = os.path.join(tsne_csv_3d_dir, method)
-    if not os.path.isdir(method_dir):
+    prefix = f"tsne_csv_3d/{method}/"
+    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
+    if not resp.get("Contents"):
         return {"error": "Method not found"}
-    return {"files": sorted(f for f in os.listdir(method_dir) if f.endswith(".csv"))}
+    return {"files": sorted(obj["Key"][len(prefix):] for obj in resp["Contents"] if obj["Key"].endswith(".csv"))}
 
 @app.get("/tsne-csv-3d/{method}/{filename}")
 def getTsneCsv3dFile(method: str, filename: str):
     if ".." in method or ".." in filename:
         return {"error": "Invalid path"}
-    path = os.path.join(tsne_csv_3d_dir, method, filename)
-    if not os.path.isfile(path):
+    try:
+        return parse_tsne_csv_3d(f"tsne_csv_3d/{method}/{filename}")
+    except ClientError:
         return {"error": "File not found"}
-    return parse_tsne_csv_3d(path)
 
 
 @app.post("/upload")
@@ -319,9 +303,7 @@ def predict():
 @app.get("/getclassnames")
 def getClassNames():
     global class_names
-    with open(classname_path) as f:
-        lines = f.readlines()
-    class_names = [line.strip() for line in lines]
+    class_names = _load_classnames()
     return class_names
 
 @app.get("/getprompt")
@@ -350,9 +332,7 @@ async def saveClassNames(data: dict = Body(...)):
     global class_names
     classes = data["text"]
     text = "\n".join(classes)
-    with open(classname_path, "w") as file:
-        file.write(text)
-
+    s3.put_object(Bucket=BUCKET, Key=CLASSNAMES_KEY, Body=text.encode("utf-8"))
     class_names = [line.strip() for line in classes]
     return {"status": "ok"}
 
