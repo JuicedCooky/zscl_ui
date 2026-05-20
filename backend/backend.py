@@ -518,7 +518,7 @@ def predictSequential():
         all_results = {}
 
         if include_base_clip:
-            base_model, _, _ = clip.load("ViT-B/16", device=device, jit=False)
+            base_model = load_model("models/base.pth")
             with torch.no_grad():
                 logits_per_image, _ = base_model(image, text)
                 probs = logits_per_image.softmax(dim=-1).cpu().numpy()
