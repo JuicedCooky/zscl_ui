@@ -4,18 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from botocore.exceptions import ClientError
 from mangum import Mangum  # <-- ADDED MANGUM
 
-import torch
-import clip
-from clip.model import build_model as _build_clip_model
-
-from PIL import Image
-from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
-try:
-    from torchvision.transforms import InterpolationMode
-    _BICUBIC = InterpolationMode.BICUBIC
-except ImportError:
-    _BICUBIC = Image.BICUBIC
-
 import os
 import io
 import csv as _csv
@@ -37,13 +25,6 @@ app.add_middleware(
 uploaded_image = None
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-pre_process = Compose([
-    Resize(224, interpolation=_BICUBIC),
-    CenterCrop(224),
-    lambda image: image.convert("RGB"),
-    ToTensor(),
-    Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
-])
 
 METHOD_DISPLAY = {
     "finetune": "Finetune",
@@ -145,11 +126,34 @@ def load_model(s3_key):
 def initialize_backend():
     """Deferred heavy loading to bypass AWS Lambda's 10-second init limit."""
     global initialized, loaded_models, model_paths
-
+    global torch, clip, Image, Compose, Resize, CenterCrop, ToTensor, Normalize, pre_process, device
+    
     if initialized:
         return
 
     print("Initializing ML assets...")
+
+    import torch
+    import clip
+    from PIL import Image
+    from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
+    
+    try:
+        from torchvision.transforms import InterpolationMode
+        _BICUBIC = InterpolationMode.BICUBIC
+    except ImportError:
+        _BICUBIC = Image.BICUBIC
+        
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    pre_process = Compose([
+        Resize(224, interpolation=_BICUBIC),
+        CenterCrop(224),
+        lambda image: image.convert("RGB"),
+        ToTensor(),
+        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+    ])
+    
     try:
         class_names = _load_classnames()
     except Exception as e:
