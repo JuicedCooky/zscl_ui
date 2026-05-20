@@ -1,14 +1,14 @@
 # Use the official AWS Lambda Python base image
 FROM public.ecr.aws/lambda/python:3.11
 
-# Fix: Install git AND C/C++ compilers for compiling python libraries like NumPy
-RUN yum install -y git gcc gcc-c++ python3-devel && yum clean all
+# We only need git now to pull that ImageNetV2 library
+RUN yum install -y git && yum clean all
 
 # Copy your requirements.txt into the container
 COPY requirements.txt ${LAMBDA_TASK_ROOT}
 
-# Install your Python dependencies
-RUN pip install -r requirements.txt
+# Install Python dependencies using the no-cache flag
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of your backend Python code into the container
 COPY . ${LAMBDA_TASK_ROOT}
