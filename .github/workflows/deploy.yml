@@ -22,7 +22,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole # Replace this!
+          role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole
           aws-region: us-east-2
 
       - name: Login to Amazon ECR
@@ -32,10 +32,9 @@ jobs:
       - name: Build and Push Backend Docker Image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: continual-learning-app # Replace with your ECR repo name
+          REPOSITORY: continual-learning-app
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # NOTICE THE './backend' AT THE END OF THE BUILD COMMAND
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG ./backend
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
           docker tag $REGISTRY/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REPOSITORY:latest
@@ -44,9 +43,9 @@ jobs:
       - name: Update Lambda Function Code
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: continual-learning-app  # Replace this!
+          REPOSITORY: continual-learning-app
           IMAGE_TAG: ${{ github.sha }}
-          FUNCTION_NAME: continual-learning-backend  # Replace with your Lambda Name!
+          FUNCTION_NAME: continual-learning-backend
         run: |
           aws lambda update-function-code \
             --function-name $FUNCTION_NAME \
@@ -69,13 +68,12 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole # Same role!
+          role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole
           aws-region: us-east-2
 
       - name: Install and Build React App
         env:
-          # Injects your backend Lambda URL into React during compilation
-          VITE_API_URL: https://dwi6l4femhc3z22kc6tmpheheq0wdpff.lambda-url.us-east-2.on.aws/ # Replace with your Lambda Function URL!
+          VITE_API_URL: https://dwi6l4femhc3z22kc6tmpheheq0wdpff.lambda-url.us-east-2.on.aws/
         run: |
           cd frontend
           npm install
@@ -83,6 +81,15 @@ jobs:
 
       - name: Sync Files to AWS S3 Website Bucket
         run: |
-          # Syncs the compiled HTML/JS folder to your S3 bucket and deletes old files
-          # Note: If using Vite, the folder is './frontend/dist'. If using Create-React-App, it's './frontend/build'.
           aws s3 sync ./frontend/dist s3://continual-learning-bucket --delete
+
+      # ====================================================
+      # ADDED: CLEAR THE CLOUDFRONT CACHE
+      # ====================================================
+      - name: Invalidate CloudFront Cache
+        env:
+          DISTRIBUTION_ID: d3fb1aoel68owy # Your exact CloudFront ID!
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id $DISTRIBUTION_ID \
+            --paths "/*"
