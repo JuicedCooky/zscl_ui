@@ -116,7 +116,7 @@ def _get_base_state_dict():
 
 def load_model(s3_key):
     """Build CLIP architecture from base.pth, then overlay fine-tuned weights from S3."""
-    model = _build_clip_model(_get_base_state_dict()).to(device)
+    model = clip.model.build_model(_get_base_state_dict()).to(device)
     if s3_key != "backend/models/base.pth":
         buf = io.BytesIO()
         s3.download_fileobj(BUCKET, s3_key, buf)
