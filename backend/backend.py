@@ -9,6 +9,7 @@ import os
 import io
 import csv as _csv
 import boto3
+import gc
 
 BUCKET = "continual-learning-bucket"
 s3 = boto3.client("s3")
@@ -425,6 +426,7 @@ def setActiveModels(data: list = Body(...), preload: bool = True):
 @app.get("/predict_lowmem")
 def predict_lowmem():
     global uploaded_image, class_names, prompt_pre, prompt_suf, active_models, model_paths
+    global _base_state_dict_cache
     initialize_backend() # <--- LAZY LOAD TRIGGER
 
     if uploaded_image is None:
@@ -458,8 +460,13 @@ def predict_lowmem():
             all_results[model_name] = result
 
             del model
-            if device.type == "cuda":
-                torch.cuda.empty_cache()
+            gc.collect()
+            
+        _base_state_dict_cache = None 
+        gc.collect() 
+        
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
 
         return all_results
 
