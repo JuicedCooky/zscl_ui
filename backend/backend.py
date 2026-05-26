@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from botocore.exceptions import ClientError
 from mangum import Mangum
+from PIL import Image
 
 import os
 import io
@@ -21,6 +22,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# --- LAZY LOADING PLACEHOLDERS ---
+torch = None
+clip = None
+device = None
+pre_process = None
+initialized = False
 
 uploaded_image = None
 
@@ -140,7 +147,6 @@ def initialize_backend():
     # 3. DO THE HEAVY IMPORTS HERE
     import torch
     import clip
-    from PIL import Image
     from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
     
     try:
@@ -355,14 +361,11 @@ def getPrompt():
 def savePrompt(data: dict = Body(...)):
     global prompt_pre, prompt_suf
 
-    if isinstance(prompt_pre, list):
+    if isinstance(data, list): 
         prompt_pre = data[0]["prefix"]
-    else:
-        prompt_pre = data["prefix"]
-
-    if isinstance(prompt_suf, list):
         prompt_suf = data[0]["suffix"]
     else:
+        prompt_pre = data["prefix"]
         prompt_suf = data["suffix"]
 
     return {"status": "ok"}
