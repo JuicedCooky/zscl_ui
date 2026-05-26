@@ -73,7 +73,7 @@ jobs:
 
       - name: Install and Build React App
         env:
-          VITE_API_URL: https://dwi6l4femhc3z22kc6tmpheheq0wdpff.lambda-url.us-east-2.on.aws/
+          VITE_API_URL: https://dwi6l4femhc3z22kc6tmpheheq0wdpff.lambda-url.us-east-2.on.aws
         run: |
           cd frontend
           npm install
