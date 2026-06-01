@@ -125,12 +125,26 @@ def _get_base_state_dict():
 def load_model(s3_key):
     """Build CLIP architecture from base.pth, then overlay fine-tuned weights from S3."""
     model = clip.model.build_model(_get_base_state_dict()).to(device)
+    
     if s3_key != "backend/models/base.pth":
         buf = io.BytesIO()
         s3.download_fileobj(BUCKET, s3_key, buf)
         buf.seek(0)
+        
+        # 1. Extract checkpoint
         checkpoint = torch.load(buf, map_location=device)
+        
+        # 2. Destroy the S3 byte buffer immediately (Saves ~350MB)
+        del buf
+        gc.collect()
+        
+        # 3. Apply weights
         model.load_state_dict(checkpoint["state_dict"], strict=False)
+        
+        # 4. Destroy the checkpoint dictionary immediately (Saves ~350MB)
+        del checkpoint
+        gc.collect()
+        
     model.eval()
     return model
 
@@ -398,7 +412,7 @@ def getModels():
     }
 
 @app.post("/setactivemodels")
-def setActiveModels(data: list = Body(...), preload: bool = True):
+def setActiveModels(data: list = Body(...), preload: bool = False):
     global active_models, loaded_models, model_paths
     initialize_backend() # <--- LAZY LOAD TRIGGER
 
