@@ -26,7 +26,7 @@ jobs:
 
       - name: Install Python Dependencies
         run: |
-          pip install modal fastapi boto3 python-multipart
+          pip install modal fastapi boto3 python-multipart PIL
 
       - name: Deploy Backend to Modal
         env:
