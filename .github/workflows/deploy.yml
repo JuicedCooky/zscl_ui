@@ -1,4 +1,4 @@
-name: Deploy Full-Stack App to AWS
+name: Deploy Full-Stack App
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   # ----------------------------------------------------
-  # JOB 1: BUILD AND DEPLOY PYTHON BACKEND TO LAMBDA
+  # JOB 1: DEPLOY PYTHON BACKEND TO MODAL
   # ----------------------------------------------------
   deploy-backend:
     runs-on: ubuntu-latest
@@ -19,42 +19,27 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          role-to-assume: arn:aws:iam::042722598941:role/GitHubActionsLambdaDeployRole
-          aws-region: us-east-2
+          python-version: '3.10'
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+      - name: Install Modal
+        run: pip install modal
 
-      - name: Build and Push Backend Docker Image
+      - name: Deploy Backend to Modal
         env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: continual-learning-app
-          IMAGE_TAG: ${{ github.sha }}
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
         run: |
-          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG ./backend
-          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
-          docker tag $REGISTRY/$REPOSITORY:$IMAGE_TAG $REGISTRY/$REPOSITORY:latest
-          docker push $REGISTRY/$REPOSITORY:latest
-
-      - name: Update Lambda Function Code
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: continual-learning-app
-          IMAGE_TAG: ${{ github.sha }}
-          FUNCTION_NAME: continual-learning-backend
-        run: |
-          aws lambda update-function-code \
-            --function-name $FUNCTION_NAME \
-            --image-uri $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          cd backend
+          modal deploy backend.py::modal_app 
 
   # ----------------------------------------------------
-  # JOB 2: BUILD AND DEPLOY REACT FRONTEND TO S3
+  # JOB 2: BUILD AND DEPLOY REACT FRONTEND TO S3 & CLOUDFRONT
   # ----------------------------------------------------
   deploy-frontend:
+    needs: deploy-backend # Wait for backend to deploy first
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -73,7 +58,8 @@ jobs:
 
       - name: Install and Build React App
         env:
-          VITE_API_URL: https://dwi6l4femhc3z22kc6tmpheheq0wdpff.lambda-url.us-east-2.on.aws
+          # Your permanent Modal URL (Notice no '-dev' at the end!)
+          VITE_API_URL: https://juicedcooky--clip-continual-learning-backend-fastapi-app.modal.run
         run: |
           cd frontend
           npm install
@@ -81,15 +67,14 @@ jobs:
 
       - name: Sync Files to AWS S3 Website Bucket
         run: |
-          # Added /frontend to the destination path
           aws s3 sync ./frontend/dist s3://continual-learning-bucket/frontend --delete
 
       # ====================================================
-      # ADDED: CLEAR THE CLOUDFRONT CACHE
+      # CLEAR THE CLOUDFRONT CACHE
       # ====================================================
       - name: Invalidate CloudFront Cache
         env:
-          DISTRIBUTION_ID: E19QZ64XFJB0U2 # Your exact CloudFront ID!
+          DISTRIBUTION_ID: E19QZ64XFJB0U2
         run: |
           aws cloudfront create-invalidation \
             --distribution-id $DISTRIBUTION_ID \

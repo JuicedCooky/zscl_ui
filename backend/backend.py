@@ -2,7 +2,6 @@
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from botocore.exceptions import ClientError
-from mangum import Mangum
 from PIL import Image
 
 import os
@@ -10,7 +9,26 @@ import io
 import csv as _csv
 import boto3
 import gc
+import modal
 
+modal_app = modal.App("clip-continual-learning-backend")
+image = (
+    modal.Image.debian_slim(python_version="3.10")
+    .apt_install("git")
+    .pip_install(
+        "fastapi",
+        "python-multipart",
+        "boto3",
+        "Pillow",
+        "torch",
+        "torchvision",
+        "botocore",
+        "boto3"
+    )
+    .run_commands("pip install git+https://github.com/openai/CLIP.git",
+                  "pip install git+https://github.com/modestyachts/ImageNetV2_pytorch.git"
+                  )
+)
 BUCKET = "continual-learning-bucket"
 s3 = boto3.client("s3")
 
@@ -610,4 +628,12 @@ def predictSequential():
 # ==========================================
 # LAMBDA HANDLER (MANGUM WRAPPER)
 # ==========================================
-handler = Mangum(app)
+@modal_app.function(
+    image=image, 
+    gpu="T4", 
+    memory=8192, # Give it 8 GB of RAM so you NEVER OOM again
+    secrets=[modal.Secret.from_name("aws-secret")] # We'll set this up next
+)
+@modal.asgi_app()
+def fastapi_app():
+    return app
