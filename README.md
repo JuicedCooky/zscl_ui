@@ -1,4 +1,4 @@
-Website demonstration of models: d3fb1aoel68owy.cloudfront.net
+Website demonstration of models: https://d3fb1aoel68owy.cloudfront.net
 
 # Steps
 
