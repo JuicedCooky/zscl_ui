@@ -43,15 +43,18 @@ export default function Home({className}) {
 
     const [availableModels, setAvailableModels] = useState([]);
     const [selectedModels, setSelectedModels] = useState([]);
+    const [isLoadingModels, setIsLoadingModels] = useState(true);
 
     useEffect(() => {
+        setIsLoadingModels(true);
         fetch(`${API}/getmodels`)
             .then(r => r.json())
             .then(data => {
                 setAvailableModels(data.models);
                 setSelectedModels(data.models.map(m => m.active));
             })
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => setIsLoadingModels(false));
     }, []);
 
     async function handlePredict(){
@@ -135,6 +138,33 @@ export default function Home({className}) {
     }
 
 
+    const METHOD_DESCRIPTIONS = {
+        "base model": "Unmodified CLIP ViT-B/16 with no task-specific training. Serves as the zero-shot baseline before any continual learning.",
+        "finetune baseline": "Standard sequential fine-tuning on each new dataset. Simple and effective on the latest task, but typically suffers severe catastrophic forgetting on earlier ones.",
+        "finetune": "Standard sequential fine-tuning on each new dataset. Simple and effective on the latest task, but typically suffers severe catastrophic forgetting on earlier ones.",
+        "zscl": "Zero-Shot Continual Learning. Replays a reference dataset alongside new task training to distill prior knowledge, preventing the model from forgetting previously learned distributions.",
+        "zscl+freeze": "ZSCL with partial layer freezing. Locks early encoder layers to protect general visual features, reducing representation drift across tasks while still adapting to new ones.",
+        "zscl+ogd": "ZSCL with Orthogonal Gradient Descent. Constrains weight updates to be orthogonal to gradients from previous tasks, directly minimizing interference between old and new knowledge.",
+        "lora": "Low-Rank Adaptation. Injects small trainable low-rank matrices into frozen model layers, fine-tuning only a fraction of parameters. Reduces overfitting to new tasks and limits overwriting of pretrained representations.",
+        "ogd": "Orthogonal Gradient Descent. Projects gradient updates onto the subspace orthogonal to those of previous tasks, so new learning does not overwrite prior task knowledge.",
+        "sfao": "Sparse Fine-tuning with Attention Optimization. Selectively updates only the most task-relevant parameters while optimizing attention layers, balancing plasticity on new tasks with stability on old ones.",
+        "sharelora": "Shared LoRA. Learns a set of low-rank adapters that are shared and composed across tasks, enabling knowledge transfer between tasks while keeping the base model frozen.",
+    };
+
+    function MethodLabel({ name }) {
+        const desc = METHOD_DESCRIPTIONS[name.toLowerCase()];
+        if (!desc) return <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">{name}</span>;
+        return (
+            <span className="relative group inline-flex items-center gap-1.5 cursor-help">
+                <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">{name}</span>
+                <span className="text-[var(--color-honeydew)]/30 text-[11px] leading-none">ⓘ</span>
+                <span className="absolute bottom-full left-0 mb-2 w-68 bg-[#0d0d1a] border border-[var(--color-honeydew)]/20 text-[var(--color-honeydew)]/80 text-xs rounded-md px-3 py-2.5 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 normal-case tracking-normal font-normal shadow-xl whitespace-normal">
+                    {desc}
+                </span>
+            </span>
+        );
+    }
+
     const modelLabelMap = React.useMemo(() => {
         const base     = availableModels.filter(m => !m.rel.includes("/") || m.rel.startsWith("base_clip/"));
         const finetune = availableModels.filter(m => m.rel.startsWith("finetune/"));
@@ -187,6 +217,31 @@ export default function Home({className}) {
 
     return (
         <div className={`${className} flex flex-col gap-4 pt-10 items-center h-auto`}>
+            <div className="w-8/10 rounded-xl border border-[var(--color-honeydew)]/10 bg-gradient-to-br from-[#44001A]/30 via-transparent to-[#002229]/20 p-7 flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-honeydew)]/35 font-medium">Interactive Demo · Thesis Project</span>
+                    <h2 className="text-3xl font-bold tracking-tight text-[var(--color-honeydew)]">Continual Learning with CLIP</h2>
+                    <div className="w-10 h-0.5 bg-[var(--color-honeydew)]/20 rounded-full mt-1"></div>
+                </div>
+                <p className="text-[var(--color-honeydew)]/65 text-sm leading-relaxed">
+                    This demo explores how vision-language models handle <span className="text-[var(--color-honeydew)]/90 font-medium">continual learning</span> — the challenge of training a model on new tasks over time without erasing what it already knows, a problem known as <span className="text-[var(--color-honeydew)]/90 font-medium">catastrophic forgetting</span>.
+                </p>
+                <p className="text-[var(--color-honeydew)]/65 text-sm leading-relaxed">
+                    Each method produces a <span className="text-[var(--color-honeydew)]/90 font-medium">chain of checkpoints</span>, one saved after each new dataset is learned. Checkpoint 1 has only seen the first dataset; checkpoint 2 has seen the first two; and so on. Selecting multiple checkpoints from the same method lets you trace how predictions evolve — and whether performance holds or degrades — as the model accumulates more tasks.
+                </p>
+                <div className="grid grid-cols-3 gap-3 pt-1">
+                    {[
+                        { n: "01", label: "Upload or capture an image to classify" },
+                        { n: "02", label: "Select one or more model checkpoints to compare" },
+                        { n: "03", label: "Hit Predict to see results side by side" },
+                    ].map(({ n, label }) => (
+                        <div key={n} className="bg-white/5 border border-[var(--color-honeydew)]/10 rounded-lg px-4 py-3 flex items-start gap-3">
+                            <span className="text-xl font-bold text-[var(--color-honeydew)]/20 leading-none mt-0.5 tabular-nums shrink-0">{n}</span>
+                            <span className="text-[var(--color-honeydew)]/55 text-xs leading-relaxed">{label}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
             <div className="w-1/2 bg-white/10 rounded-md p-2 border-1 gap-2 flex relative">
                 <button className={`${inputMode !== "upload" ?
                     "hover:border-solid hover:bg-[var(--color-magenta)]/20 hover:border-[var(--color-honeydew)]/60 transition duration-300"
@@ -257,11 +312,18 @@ export default function Home({className}) {
 
             <hr className="w-9/10 border-[var(--color-honeydew)]/50"></hr>
             <div className="gap-y-4 flex flex-col w-8/10">
-                <span>Choose Model(s) - Each model within a method is learned from the previous step</span>
-                {availableModels.length === 0 && (
+                <div className="flex flex-col gap-1">
+                    <span className="text-lg font-semibold text-[var(--color-honeydew)]">Choose Model Checkpoints</span>
+                    <span className="text-xs text-[var(--color-honeydew)]/45 leading-relaxed">
+                        Within each method, checkpoints are ordered left → right by training stage. Each one has seen all prior datasets plus one new one.
+                        Selecting multiple lets you compare how the model changes as it learns more tasks.
+                    </span>
+                </div>
+                {isLoadingModels && <LoadingSpinner />}
+                {!isLoadingModels && availableModels.length === 0 && (
                     <span className="text-[var(--color-honeydew)]/50 text-sm">No models found in models/</span>
                 )}
-                {availableModels.length > 0 && (() => {
+                {!isLoadingModels && availableModels.length > 0 && (() => {
                     const base     = availableModels.filter(m => !m.rel.includes("/") || m.rel.startsWith("base_clip/"));
                     const finetune = availableModels.filter(m =>  m.rel.startsWith("finetune/"));
                     const others   = availableModels.filter(m =>  m.rel.includes("/") && !m.rel.startsWith("finetune/") && !m.rel.startsWith("base_clip/"));
@@ -321,7 +383,7 @@ export default function Home({className}) {
                             {base.length > 0 && (
                                 <div className="flex flex-col gap-2">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">Base Model</span>
+                                        <MethodLabel name="Base Model" />
                                         <div className="flex-1 border-t-2 border-[var(--color-honeydew)]/50"></div>
                                     </div>
                                     <div className="flex flex-wrap gap-2 items-center pl-3 border-l-2 border-[var(--color-honeydew)]/20">
@@ -332,7 +394,7 @@ export default function Home({className}) {
                             {finetune.length > 0 && (
                                 <div className="flex flex-col gap-2">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">Finetune Baseline</span>
+                                        <MethodLabel name="Finetune Baseline" />
                                         <div className="flex-1 border-t-2 border-[var(--color-honeydew)]/50"></div>
                                     </div>
                                     <div className="flex flex-wrap gap-2 items-center pl-3 border-l-2 border-[var(--color-honeydew)]/20">
@@ -351,7 +413,7 @@ export default function Home({className}) {
                                 <React.Fragment key={folder}>
                                     {idx > 0 && <hr className="border-[var(--color-honeydew)]/20" />}
                                     <div className="flex flex-col gap-2">
-                                        <span className="text-xs uppercase tracking-widest text-[var(--color-honeydew)]/50">{folder}</span>
+                                        <MethodLabel name={folder} />
                                         <div className="flex flex-wrap gap-2 items-center">{renderConnected(models)}</div>
                                     </div>
                                 </React.Fragment>
