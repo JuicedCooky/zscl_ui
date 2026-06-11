@@ -11,7 +11,20 @@ import { IoIosSend  } from "react-icons/io";
 import { IoFolderOpenOutline } from "react-icons/io5";
 import { FaEdit } from "react-icons/fa";
 import { DatasetImageSelector } from "../components/DatasetImageSelector";
+import { FiChevronDown } from "react-icons/fi";
 
+const METHOD_DESCRIPTIONS = {
+    "base model":        "Unmodified CLIP ViT-B/16 with no task-specific training. Serves as the zero-shot baseline before any continual learning.",
+    "finetune baseline": "Standard sequential fine-tuning on each new dataset. Simple and effective on the latest task, but typically suffers severe catastrophic forgetting on earlier ones.",
+    "finetune":          "Standard sequential fine-tuning on each new dataset. Simple and effective on the latest task, but typically suffers severe catastrophic forgetting on earlier ones.",
+    "zscl":              "Zero-Shot Continual Learning. Replays a reference dataset alongside new task training to distill prior knowledge, preventing the model from forgetting previously learned distributions.",
+    "zscl+freeze":       "ZSCL with partial layer freezing. Locks early encoder layers to protect general visual features, reducing representation drift across tasks while still adapting to new ones.",
+    "zscl+ogd":          "ZSCL with Orthogonal Gradient Descent. Constrains weight updates to be orthogonal to gradients from previous tasks, directly minimizing interference between old and new knowledge.",
+    "lora":              "Low-Rank Adaptation. Injects small trainable low-rank matrices into frozen model layers, fine-tuning only a fraction of parameters. Reduces overfitting to new tasks and limits overwriting of pretrained representations.",
+    "ogd":               "Orthogonal Gradient Descent. Projects gradient updates onto the subspace orthogonal to those of previous tasks, so new learning does not overwrite prior task knowledge.",
+    "sfao":              "Sparse Fine-tuning with Attention Optimization. Selectively updates only the most task-relevant parameters while optimizing attention layers, balancing plasticity on new tasks with stability on old ones.",
+    "sharelora":         "Shared LoRA. Learns a set of low-rank adapters that are shared and composed across tasks, enabling knowledge transfer between tasks while keeping the base model frozen.",
+};
 
 export default function Home({className}) {
     const [preview, setPreview] = useState(null);
@@ -138,18 +151,7 @@ export default function Home({className}) {
     }
 
 
-    const METHOD_DESCRIPTIONS = {
-        "base model": "Unmodified CLIP ViT-B/16 with no task-specific training. Serves as the zero-shot baseline before any continual learning.",
-        "finetune baseline": "Standard sequential fine-tuning on each new dataset. Simple and effective on the latest task, but typically suffers severe catastrophic forgetting on earlier ones.",
-        "finetune": "Standard sequential fine-tuning on each new dataset. Simple and effective on the latest task, but typically suffers severe catastrophic forgetting on earlier ones.",
-        "zscl": "Zero-Shot Continual Learning. Replays a reference dataset alongside new task training to distill prior knowledge, preventing the model from forgetting previously learned distributions.",
-        "zscl+freeze": "ZSCL with partial layer freezing. Locks early encoder layers to protect general visual features, reducing representation drift across tasks while still adapting to new ones.",
-        "zscl+ogd": "ZSCL with Orthogonal Gradient Descent. Constrains weight updates to be orthogonal to gradients from previous tasks, directly minimizing interference between old and new knowledge.",
-        "lora": "Low-Rank Adaptation. Injects small trainable low-rank matrices into frozen model layers, fine-tuning only a fraction of parameters. Reduces overfitting to new tasks and limits overwriting of pretrained representations.",
-        "ogd": "Orthogonal Gradient Descent. Projects gradient updates onto the subspace orthogonal to those of previous tasks, so new learning does not overwrite prior task knowledge.",
-        "sfao": "Sparse Fine-tuning with Attention Optimization. Selectively updates only the most task-relevant parameters while optimizing attention layers, balancing plasticity on new tasks with stability on old ones.",
-        "sharelora": "Shared LoRA. Learns a set of low-rank adapters that are shared and composed across tasks, enabling knowledge transfer between tasks while keeping the base model frozen.",
-    };
+    const [openMethod, setOpenMethod] = React.useState(null);
 
     function MethodLabel({ name }) {
         const desc = METHOD_DESCRIPTIONS[name.toLowerCase()];
@@ -229,6 +231,34 @@ export default function Home({className}) {
                 <p className="text-[var(--color-honeydew)]/65 text-sm leading-relaxed">
                     Each method produces a <span className="text-[var(--color-honeydew)]/90 font-medium">chain of checkpoints</span>, one saved after each new dataset is learned. Checkpoint 1 has only seen the first dataset; checkpoint 2 has seen the first two; and so on. Selecting multiple checkpoints from the same method lets you trace how predictions evolve — and whether performance holds or degrades — as the model accumulates more tasks.
                 </p>
+                <div className="flex flex-col border border-[var(--color-honeydew)]/10 rounded-lg overflow-hidden">
+                    <div className="px-4 py-2 bg-white/5 border-b border-[var(--color-honeydew)]/10">
+                        <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--color-honeydew)]/35 font-medium">Training Methods</span>
+                    </div>
+                    {Object.entries(METHOD_DESCRIPTIONS)
+                        .filter(([key]) => !["finetune baseline"].includes(key))
+                        .map(([key, desc], idx, arr) => {
+                            const isOpen = openMethod === key;
+                            const isLast = idx === arr.length - 1;
+                            return (
+                                <div key={key} className={`${!isLast ? "border-b border-[var(--color-honeydew)]/8" : ""}`}>
+                                    <button
+                                        onClick={() => setOpenMethod(isOpen ? null : key)}
+                                        className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-white/5 transition duration-150 group"
+                                    >
+                                        <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-honeydew)]/60 group-hover:text-[var(--color-honeydew)]/80 transition duration-150">{key}</span>
+                                        <FiChevronDown className={`text-[var(--color-honeydew)]/30 text-sm shrink-0 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+                                    </button>
+                                    {isOpen && (
+                                        <div className="px-4 pb-3 text-xs text-[var(--color-honeydew)]/55 leading-relaxed border-t border-[var(--color-honeydew)]/8 pt-2.5 bg-white/3">
+                                            {desc}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    }
+                </div>
                 <div className="grid grid-cols-3 gap-3 pt-1">
                     {[
                         { n: "01", label: "Upload or capture an image to classify" },

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import LoadingSpinner from "../components/LoadingSpinner";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
@@ -251,7 +252,7 @@ function MethodCanvas3D({ method, csvs, sliderValue, bounds, loading, showAxes, 
             </Canvas>
             {loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none">
-                    <span className="text-sm text-[var(--color-honeydew)]/60">Loading…</span>
+                    <div className="h-8 w-8 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(236,255,248,0.1)', borderTopColor: '#ECFFF8' }} />
                 </div>
             )}
             <div className="absolute top-2 left-3 text-xs capitalize text-[var(--color-honeydew)]/70 bg-black/50 px-2 py-0.5 rounded pointer-events-none">
@@ -296,6 +297,7 @@ function BaseCanvas3D({ baseData, bounds, showAxes, showPlane, axesOpacity, plan
 // ── Page ──────────────────────────────────────────────────────────────
 export default function TSNETransition3D({ className }) {
     const [methods, setMethods]           = useState([]);
+    const [isLoadingMethods, setIsLoadingMethods] = useState(true);
     const [selected, setSelected]         = useState([]);
     const [csvsByMethod, setCsvsByMethod] = useState(() => ({ ..._methodDatasetsCache }));
     const [loadingSet, setLoadingSet]     = useState(new Set());
@@ -329,10 +331,12 @@ export default function TSNETransition3D({ className }) {
     }
 
     useEffect(() => {
+        setIsLoadingMethods(true);
         fetch(`${API}/tsne-csv-3d/methods`)
             .then(r => r.json())
             .then(d => setMethods(d.methods || []))
-            .catch(() => {});
+            .catch(() => {})
+            .finally(() => setIsLoadingMethods(false));
     }, []);
 
     useEffect(() => {
@@ -470,13 +474,17 @@ export default function TSNETransition3D({ className }) {
             {/* ── Method selector ───────────────────────────────────── */}
             <div className="flex flex-col items-center gap-3 w-full max-w-3xl">
                 <SectionDivider label="Method" />
-                <div className="flex gap-2 flex-wrap justify-center">
-                    {methods.map(m => (
-                        <button key={m} className={btnCls(selected.includes(m))} onClick={() => toggleMethod(m)}>
-                            {m}
-                        </button>
-                    ))}
-                </div>
+                {isLoadingMethods ? (
+                    <LoadingSpinner />
+                ) : (
+                    <div className="flex gap-2 flex-wrap justify-center">
+                        {methods.map(m => (
+                            <button key={m} className={btnCls(selected.includes(m))} onClick={() => toggleMethod(m)}>
+                                {m}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* ── Canvas grid ───────────────────────────────────────── */}
@@ -516,7 +524,10 @@ export default function TSNETransition3D({ className }) {
                 </div>
             ) : (
                 <div className="w-full max-w-2xl aspect-square flex items-center justify-center rounded-lg border border-[var(--color-honeydew)]/10">
-                    <span className="text-sm text-[var(--color-honeydew)]/30">Select a method above</span>
+                    {isLoadingMethods
+                        ? <LoadingSpinner />
+                        : <span className="text-sm text-[var(--color-honeydew)]/30">Select a method above</span>
+                    }
                 </div>
             )}
 

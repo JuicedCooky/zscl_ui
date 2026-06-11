@@ -239,6 +239,12 @@ def getTsneMethods():
     methods = sorted(p["Prefix"][len("backend/tsne_images/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
     return {"methods": methods}
 
+@app.get("/tsne-csv/methods")
+def getTsneCsvMethods():
+    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="backend/tsne_csv/", Delimiter="/")
+    methods = sorted(p["Prefix"][len("backend/tsne_csv/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
+    return {"methods": methods}
+
 @app.get("/tsne/{method}/list")
 def listTsneImages(method: str):
     if ".." in method:
