@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  backend:
+    # Docker will pull this pre-built image directly from Docker Hub
+    image: juicedcook/continual-learning-backend:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - clip_models:/app/models
+
+  frontend:
+    image: juicedcook/continual-learning-frontend:latest
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  clip_models:

@@ -4,3 +4,5 @@ backend/models/**/*.pth
 backend/__pycache__/
 .claude/
 Aircraft.pth
+backend (aws)/
+backend (modal)/

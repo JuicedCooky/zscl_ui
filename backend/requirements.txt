@@ -1,15 +1,15 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
-tqdm
-ftfy
-regex
-wilds
-pandas
-uvicorn
 fastapi
+uvicorn
 python-multipart
+boto3
+botocore
+Pillow
 torch
 torchvision
 numpy
-mangum
+tqdm
+ftfy
+regex
 git+https://github.com/openai/CLIP.git
 git+https://github.com/modestyachts/ImageNetV2_pytorch.git

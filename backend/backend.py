@@ -1,46 +1,30 @@
-﻿from fastapi import FastAPI, UploadFile, File, Body
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, UploadFile, File, Body
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from botocore.exceptions import ClientError
+from botocore import UNSIGNED
+from botocore.config import Config
 from PIL import Image
 
 import os
-import io
 import csv as _csv
-import boto3
 import gc
-import modal
+import boto3
 
-modal_app = modal.App("clip-continual-learning-backend")
-image = (
-    modal.Image.debian_slim(python_version="3.10")
-    .apt_install("git")
-    .pip_install(
-        "fastapi",
-        "python-multipart",
-        "boto3",
-        "Pillow",
-        "torch",
-        "torchvision",
-        "botocore",
-        "boto3"
-    )
-    .run_commands("pip install git+https://github.com/openai/CLIP.git",
-                  "pip install git+https://github.com/modestyachts/ImageNetV2_pytorch.git"
-                  )
-)
-BUCKET = "continual-learning-bucket"
-s3 = boto3.client("s3")
+S3_BUCKET = "continual-learning-bucket"
+S3_MODELS_PREFIX = "backend/models/"
 
-app = FastAPI()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-app.add_middleware(
+web_app = FastAPI()
+
+web_app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 # --- LAZY LOADING PLACEHOLDERS ---
 torch = None
 clip = None
@@ -49,11 +33,6 @@ pre_process = None
 initialized = False
 
 uploaded_image = None
-
-# 1. INITIALIZE THESE AS NONE IN THE GLOBAL SCOPE
-device = None
-pre_process = None
-
 
 METHOD_DISPLAY = {
     "finetune": "Finetune",
@@ -67,41 +46,67 @@ def make_display_name(method_folder: str, filename: str) -> str:
     method = METHOD_DISPLAY.get(method_folder.lower(), method_folder.replace("+", "+").title())
     return f"{method} - {dataset.title()}"
 
-def discover_models():
-    """List models/ in S3 and return sorted list of dicts with path, rel, display_name, group."""
-    root_files = []
-    subfolder_files = []
+def _s3_public():
+    return boto3.client("s3", config=Config(signature_version=UNSIGNED), region_name="us-east-2")
+
+def download_models_if_missing():
+    """Download any .pth files from the public S3 bucket that aren't present locally."""
+    models_dir = os.path.join(BASE_DIR, "models")
+    os.makedirs(models_dir, exist_ok=True)
+
+    s3 = _s3_public()
     paginator = s3.get_paginator("list_objects_v2")
-    for page in paginator.paginate(Bucket=BUCKET, Prefix="backend/models/"):
+
+    for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=S3_MODELS_PREFIX):
         for obj in page.get("Contents", []):
             key = obj["Key"]
-            rel = key[len("backend/models/"):]
-            if not rel:
+            rel = key[len(S3_MODELS_PREFIX):]
+            if not rel or not rel.endswith(".pth"):
                 continue
-            parts = rel.split("/")
-            if len(parts) == 1 and parts[0].endswith(".pth"):
-                fname = parts[0]
-                display = os.path.splitext(fname)[0].replace("_", " ").replace("-", " ").title()
-                root_files.append({
-                    "path": key,
-                    "rel": fname,
-                    "display_name": display,
-                    "group": "base",
-                })
-            elif len(parts) == 2 and parts[1].endswith(".pth"):
-                folder, fname = parts
-                subfolder_files.append({
-                    "path": key,
-                    "rel": f"{folder}/{fname}",
-                    "display_name": make_display_name(folder, fname),
-                    "group": folder,
-                })
+
+            local_path = os.path.join(models_dir, *rel.split("/"))
+            if os.path.isfile(local_path):
+                continue
+
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            print(f"Downloading {key} ...")
+            s3.download_file(S3_BUCKET, key, local_path)
+            print(f"Saved {local_path}")
+
+def discover_models():
+    """Walk local models/ dir and return sorted list of dicts."""
+    models_dir = os.path.join(BASE_DIR, "models")
+    root_files = []
+    subfolder_files = []
+
+    if not os.path.isdir(models_dir):
+        return []
+
+    for entry in os.listdir(models_dir):
+        entry_path = os.path.join(models_dir, entry)
+        if os.path.isfile(entry_path) and entry.endswith(".pth"):
+            display = os.path.splitext(entry)[0].replace("_", " ").replace("-", " ").title()
+            root_files.append({
+                "path": entry_path,
+                "rel": entry,
+                "display_name": display,
+                "group": "base",
+            })
+        elif os.path.isdir(entry_path):
+            for fname in os.listdir(entry_path):
+                if fname.endswith(".pth"):
+                    subfolder_files.append({
+                        "path": os.path.join(entry_path, fname),
+                        "rel": f"{entry}/{fname}",
+                        "display_name": make_display_name(entry, fname),
+                        "group": entry,
+                    })
+
     root_files.sort(key=lambda x: x["rel"])
     subfolder_files.sort(key=lambda x: x["rel"])
     return root_files + subfolder_files
 
 # --- LAZY LOADING VARIABLES ---
-initialized = False
 model_active_state: dict = {}
 model_paths: list = []
 active_models: list = []
@@ -119,7 +124,6 @@ sequential_model_paths = []
 include_base_clip = False
 
 def sync_models():
-    """Re-scan models dir and update model_paths / active_models globals."""
     global model_paths, active_models, model_active_state
     discovered = discover_models()
     for i, m in enumerate(discovered):
@@ -134,63 +138,46 @@ _base_state_dict_cache = None
 def _get_base_state_dict():
     global _base_state_dict_cache
     if _base_state_dict_cache is None:
-        buf = io.BytesIO()
-        s3.download_fileobj(BUCKET, "backend/models/base.pth", buf)
-        buf.seek(0)
-        _base_state_dict_cache = torch.load(buf, map_location=device)["state_dict"]
+        base_path = os.path.join(BASE_DIR, "models", "base.pth")
+        _base_state_dict_cache = torch.load(base_path, map_location=device)["state_dict"]
     return _base_state_dict_cache
 
-def load_model(s3_key):
-    """Build CLIP architecture from base.pth, then overlay fine-tuned weights from S3."""
+def load_model(model_path):
+    """Build CLIP architecture from base.pth, then overlay fine-tuned weights."""
     model = clip.model.build_model(_get_base_state_dict()).to(device)
-    
-    if s3_key != "backend/models/base.pth":
-        buf = io.BytesIO()
-        s3.download_fileobj(BUCKET, s3_key, buf)
-        buf.seek(0)
-        
-        # 1. Extract checkpoint
-        checkpoint = torch.load(buf, map_location=device)
-        
-        # 2. Destroy the S3 byte buffer immediately (Saves ~350MB)
-        del buf
-        gc.collect()
-        
-        # 3. Apply weights
+
+    base_path = os.path.join(BASE_DIR, "models", "base.pth")
+    if model_path != base_path:
+        checkpoint = torch.load(model_path, map_location=device)
         model.load_state_dict(checkpoint["state_dict"], strict=False)
-        
-        # 4. Destroy the checkpoint dictionary immediately (Saves ~350MB)
         del checkpoint
         gc.collect()
-        
+
     model.eval()
     return model
 
 def initialize_backend():
-    """Deferred heavy loading to bypass AWS Lambda's 10-second init limit."""
     global initialized, loaded_models, model_paths, class_names
-    # 2. DECLARE DEVICE AND PRE_PROCESS AS GLOBAL HERE
-    global torch, clip, device, pre_process 
+    global torch, clip, device, pre_process
 
     if initialized:
         return
 
     print("Initializing ML assets...")
-    
-    # 3. DO THE HEAVY IMPORTS HERE
+    download_models_if_missing()
+
     import torch
     import clip
     from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
-    
+
     try:
         from torchvision.transforms import InterpolationMode
         _BICUBIC = InterpolationMode.BICUBIC
     except ImportError:
         _BICUBIC = Image.BICUBIC
-        
-    # 4. DEFINE THE VARIABLES *AFTER* TORCH IS IMPORTED
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
+
     pre_process = Compose([
         Resize(224, interpolation=_BICUBIC),
         CenterCrop(224),
@@ -198,149 +185,142 @@ def initialize_backend():
         ToTensor(),
         Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
     ])
-    
+
     try:
         class_names = _load_classnames()
     except Exception as e:
-        print(f"Failed to load classnames from S3: {e}")
+        print(f"Failed to load classnames: {e}")
         class_names = ["object"]
 
     sync_models()
-    
+
     if model_paths:
         try:
             loaded_models[model_paths[0]] = load_model(model_paths[0])
         except Exception as e:
             print(f"Failed to load default model: {e}")
-            
+
     initialized = True
     print("Initialization complete!")
-    
-CLASSNAMES_KEY = "backend/classes/custom_classes.txt"
+
+CLASSNAMES_FILE = os.path.join(BASE_DIR, "classes", "custom_classes.txt")
 
 def _load_classnames():
-    buf = io.BytesIO()
-    s3.download_fileobj(BUCKET, CLASSNAMES_KEY, buf)
-    return [l.strip() for l in buf.getvalue().decode("utf-8").splitlines() if l.strip()]
+    with open(CLASSNAMES_FILE, "r", encoding="utf-8") as f:
+        return [l.strip() for l in f.read().splitlines() if l.strip()]
 
 class_names = []
 
 prompt_pre = "a photo of a"
 prompt_suf = ""
 
-@app.get("/tsne/base")
+@web_app.get("/tsne/base")
 def getTsneBase():
-    obj = s3.get_object(Bucket=BUCKET, Key="backend/tsne_images/base_tsne.png")
-    return StreamingResponse(obj["Body"], media_type="image/png")
+    path = os.path.join(BASE_DIR, "tsne_images", "base_tsne.png")
+    return FileResponse(path, media_type="image/png")
 
-@app.get("/tsne/methods")
+@web_app.get("/tsne/methods")
 def getTsneMethods():
-    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="backend/tsne_images/", Delimiter="/")
-    methods = sorted(p["Prefix"][len("backend/tsne_images/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
+    tsne_dir = os.path.join(BASE_DIR, "tsne_images")
+    methods = sorted(e for e in os.listdir(tsne_dir) if os.path.isdir(os.path.join(tsne_dir, e)))
     return {"methods": methods}
 
-@app.get("/tsne-csv/methods")
+@web_app.get("/tsne-csv/methods")
 def getTsneCsvMethods():
-    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="backend/tsne_csv/", Delimiter="/")
-    methods = sorted(p["Prefix"][len("backend/tsne_csv/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
+    csv_dir = os.path.join(BASE_DIR, "tsne_csv")
+    methods = sorted(e for e in os.listdir(csv_dir) if os.path.isdir(os.path.join(csv_dir, e)))
     return {"methods": methods}
 
-@app.get("/tsne/{method}/list")
+@web_app.get("/tsne/{method}/list")
 def listTsneImages(method: str):
     if ".." in method:
         return {"error": "Method not found"}
-    prefix = f"backend/tsne_images/{method}/"
-    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
-    files = sorted(obj["Key"][len(prefix):] for obj in resp.get("Contents", []) if obj["Key"].endswith(".png"))
-    return {"images": files}
+    method_dir = os.path.join(BASE_DIR, "tsne_images", method)
+    if not os.path.isdir(method_dir):
+        return {"images": []}
+    return {"images": sorted(f for f in os.listdir(method_dir) if f.endswith(".png"))}
 
-@app.get("/tsne/{method}/{filename}")
+@web_app.get("/tsne/{method}/{filename}")
 def getTsneImage(method: str, filename: str):
     if ".." in method or ".." in filename:
         return {"error": "Invalid path"}
-    try:
-        obj = s3.get_object(Bucket=BUCKET, Key=f"backend/tsne_images/{method}/{filename}")
-        return StreamingResponse(obj["Body"], media_type="image/png")
-    except ClientError:
+    path = os.path.join(BASE_DIR, "tsne_images", method, filename)
+    if not os.path.isfile(path):
         return {"error": "Image not found"}
+    return FileResponse(path, media_type="image/png")
 
-def parse_tsne_csv(s3_key: str):
-    buf = io.BytesIO()
-    s3.download_fileobj(BUCKET, s3_key, buf)
-    reader = _csv.DictReader(io.StringIO(buf.getvalue().decode("utf-8")))
-    return [{"x": float(r["x"]), "y": float(r["y"]), "label": int(r["label"]), "classname": r["classname"], "dataset": r["dataset"]} for r in reader]
+def parse_tsne_csv(file_path: str):
+    with open(file_path, "r", encoding="utf-8") as f:
+        reader = _csv.DictReader(f)
+        return [{"x": float(r["x"]), "y": float(r["y"]), "label": int(r["label"]), "classname": r["classname"], "dataset": r["dataset"]} for r in reader]
 
-@app.get("/tsne-csv/base")
+@web_app.get("/tsne-csv/base")
 def getTsneCsvBase():
-    return parse_tsne_csv("backend/tsne_csv/base_tsne.csv")
+    return parse_tsne_csv(os.path.join(BASE_DIR, "tsne_csv", "base_tsne.csv"))
 
-@app.get("/tsne-csv/{method}/list")
+@web_app.get("/tsne-csv/{method}/list")
 def listTsneCsvFiles(method: str):
     if ".." in method:
         return {"error": "Invalid path"}
-    prefix = f"backend/tsne_csv/{method}/"
-    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
-    if not resp.get("Contents"):
+    method_dir = os.path.join(BASE_DIR, "tsne_csv", method)
+    if not os.path.isdir(method_dir):
         return {"error": "Method not found"}
-    return {"files": sorted(obj["Key"][len(prefix):] for obj in resp["Contents"] if obj["Key"].endswith(".csv"))}
+    return {"files": sorted(f for f in os.listdir(method_dir) if f.endswith(".csv"))}
 
-@app.get("/tsne-csv/{method}/{filename}")
+@web_app.get("/tsne-csv/{method}/{filename}")
 def getTsneCsvFile(method: str, filename: str):
     if ".." in method or ".." in filename:
         return {"error": "Invalid path"}
-    try:
-        return parse_tsne_csv(f"backend/tsne_csv/{method}/{filename}")
-    except ClientError:
+    path = os.path.join(BASE_DIR, "tsne_csv", method, filename)
+    if not os.path.isfile(path):
         return {"error": "File not found"}
+    return parse_tsne_csv(path)
 
-def parse_tsne_csv_3d(s3_key: str):
-    buf = io.BytesIO()
-    s3.download_fileobj(BUCKET, s3_key, buf)
-    reader = _csv.DictReader(io.StringIO(buf.getvalue().decode("utf-8")))
-    return [{"x": float(r["x"]), "y": float(r["y"]), "z": float(r["z"]), "label": int(r["label"]), "classname": r["classname"], "dataset": r["dataset"]} for r in reader]
+def parse_tsne_csv_3d(file_path: str):
+    with open(file_path, "r", encoding="utf-8") as f:
+        reader = _csv.DictReader(f)
+        return [{"x": float(r["x"]), "y": float(r["y"]), "z": float(r["z"]), "label": int(r["label"]), "classname": r["classname"], "dataset": r["dataset"]} for r in reader]
 
-@app.get("/tsne-csv-3d/methods")
+@web_app.get("/tsne-csv-3d/methods")
 def getTsneCsv3dMethods():
-    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix="backend/tsne_csv_3d/", Delimiter="/")
-    methods = sorted(p["Prefix"][len("backend/tsne_csv_3d/"):].rstrip("/") for p in resp.get("CommonPrefixes", []))
+    csv3d_dir = os.path.join(BASE_DIR, "tsne_csv_3d")
+    methods = sorted(e for e in os.listdir(csv3d_dir) if os.path.isdir(os.path.join(csv3d_dir, e)))
     return {"methods": methods}
 
-@app.get("/tsne-csv-3d/base")
+@web_app.get("/tsne-csv-3d/base")
 def getTsneCsv3dBase():
-    return parse_tsne_csv_3d("backend/tsne_csv_3d/base_tsne.csv")
+    return parse_tsne_csv_3d(os.path.join(BASE_DIR, "tsne_csv_3d", "base_tsne.csv"))
 
-@app.get("/tsne-csv-3d/{method}/list")
+@web_app.get("/tsne-csv-3d/{method}/list")
 def listTsneCsv3dFiles(method: str):
     if ".." in method:
         return {"error": "Invalid path"}
-    prefix = f"backend/tsne_csv_3d/{method}/"
-    resp = s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix)
-    if not resp.get("Contents"):
+    method_dir = os.path.join(BASE_DIR, "tsne_csv_3d", method)
+    if not os.path.isdir(method_dir):
         return {"error": "Method not found"}
-    return {"files": sorted(obj["Key"][len(prefix):] for obj in resp["Contents"] if obj["Key"].endswith(".csv"))}
+    return {"files": sorted(f for f in os.listdir(method_dir) if f.endswith(".csv"))}
 
-@app.get("/tsne-csv-3d/{method}/{filename}")
+@web_app.get("/tsne-csv-3d/{method}/{filename}")
 def getTsneCsv3dFile(method: str, filename: str):
     if ".." in method or ".." in filename:
         return {"error": "Invalid path"}
-    try:
-        return parse_tsne_csv_3d(f"backend/tsne_csv_3d/{method}/{filename}")
-    except ClientError:
+    path = os.path.join(BASE_DIR, "tsne_csv_3d", method, filename)
+    if not os.path.isfile(path):
         return {"error": "File not found"}
+    return parse_tsne_csv_3d(path)
 
-
-@app.post("/upload")
+@web_app.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
     global uploaded_image
     content = await file.read()
-    uploaded_image = Image.open(io.BytesIO(content))
+    uploaded_image = Image.open(__import__("io").BytesIO(content))
     return {"status": "ok"}
 
-@app.get("/predict")
+@web_app.get("/predict")
 def predict():
     global uploaded_image, class_names, prompt_pre, prompt_suf, active_models, loaded_models, model_paths
-    
-    initialize_backend() # <--- LAZY LOAD TRIGGER
+
+    initialize_backend()
 
     if prompt_pre.endswith(" "):
         prompt_pre = prompt_pre[:-1]
@@ -358,7 +338,6 @@ def predict():
     try:
         image = pre_process(uploaded_image).unsqueeze(0).to(device)
         text = clip.tokenize(prompts).to(device)
-
         all_results = {}
 
         for model_path in active_model_paths:
@@ -385,22 +364,21 @@ def predict():
         print("Error:", e)
         return {"error": str(e)}
 
-@app.get("/getclassnames")
+@web_app.get("/getclassnames")
 def getClassNames():
     global class_names
     class_names = _load_classnames()
     return class_names
 
-@app.get("/getprompt")
+@web_app.get("/getprompt")
 def getPrompt():
-    global prompt_pre, prompt_suf
     return {"prefix": prompt_pre, "suffix": prompt_suf}
 
-@app.post("/saveprompt")
+@web_app.post("/saveprompt")
 def savePrompt(data: dict = Body(...)):
     global prompt_pre, prompt_suf
 
-    if isinstance(data, list): 
+    if isinstance(data, list):
         prompt_pre = data[0]["prefix"]
         prompt_suf = data[0]["suffix"]
     else:
@@ -409,19 +387,19 @@ def savePrompt(data: dict = Body(...)):
 
     return {"status": "ok"}
 
-@app.post("/saveclassnames")
+@web_app.post("/saveclassnames")
 async def saveClassNames(data: dict = Body(...)):
     global class_names
     classes = data["text"]
-    text = "\n".join(classes)
-    s3.put_object(Bucket=BUCKET, Key=CLASSNAMES_KEY, Body=text.encode("utf-8"))
+    os.makedirs(os.path.dirname(CLASSNAMES_FILE), exist_ok=True)
+    with open(CLASSNAMES_FILE, "w", encoding="utf-8") as f:
+        f.write("\n".join(classes))
     class_names = [line.strip() for line in classes]
     return {"status": "ok"}
 
-@app.get("/getmodels")
+@web_app.get("/getmodels")
 def getModels():
-    """Rescan models/ dir and return list with display names and active state."""
-    initialize_backend() # <--- LAZY LOAD TRIGGER
+    initialize_backend()
     discovered = sync_models()
     return {
         "models": [
@@ -435,10 +413,10 @@ def getModels():
         ]
     }
 
-@app.post("/setactivemodels")
+@web_app.post("/setactivemodels")
 def setActiveModels(data: list = Body(...), preload: bool = False):
     global active_models, loaded_models, model_paths
-    initialize_backend() # <--- LAZY LOAD TRIGGER
+    initialize_backend()
 
     if len(data) != len(model_paths):
         return {"error": f"Expected array of length {len(model_paths)}, got {len(data)}"}
@@ -461,11 +439,11 @@ def setActiveModels(data: list = Body(...), preload: bool = False):
 
     return {"status": "ok", "active": active_models}
 
-@app.get("/predict_lowmem")
+@web_app.get("/predict_lowmem")
 def predict_lowmem():
     global uploaded_image, class_names, prompt_pre, prompt_suf, active_models, model_paths
     global _base_state_dict_cache
-    initialize_backend() # <--- LAZY LOAD TRIGGER
+    initialize_backend()
 
     if uploaded_image is None:
         return {"error": "No image uploaded yet"}
@@ -499,10 +477,10 @@ def predict_lowmem():
 
             del model
             gc.collect()
-            
-        _base_state_dict_cache = None 
-        gc.collect() 
-        
+
+        _base_state_dict_cache = None
+        gc.collect()
+
         if device.type == "cuda":
             torch.cuda.empty_cache()
 
@@ -512,10 +490,10 @@ def predict_lowmem():
         print("Error:", e)
         return {"error": str(e)}
 
-@app.post("/setsequentialmodels")
+@web_app.post("/setsequentialmodels")
 def setSequentialModels(data: dict = Body(...)):
     global sequential_model_paths, loaded_models, include_base_clip
-    initialize_backend() # <--- LAZY LOAD TRIGGER
+    initialize_backend()
 
     models_config = data.get("models", [])
     sequential_model_paths = []
@@ -546,21 +524,20 @@ def setSequentialModels(data: dict = Body(...)):
             return {"error": f"Unknown method: {method}"}
 
         method_folder = METHOD_FOLDERS[method]
-        s3_prefix = f"backend/models/{method_folder}/"
+        method_dir = os.path.join(BASE_DIR, "models", method_folder)
         dataset_name = DATASET_NAMES[dataset_index].lower()
 
         model_file = None
-        response = s3.list_objects_v2(Bucket=BUCKET, Prefix=s3_prefix)
-        for obj in response.get("Contents", []):
-            filename = obj["Key"].split("/")[-1]
-            if filename.endswith(".pth") and dataset_name in filename.lower():
-                model_file = filename
-                break
+        if os.path.isdir(method_dir):
+            for fname in sorted(os.listdir(method_dir)):
+                if fname.endswith(".pth") and dataset_name in fname.lower():
+                    model_file = fname
+                    break
 
         if not model_file:
             return {"error": f"Model not found for {config.get('dataset', 'unknown')} with method {method}"}
 
-        model_path = f"backend/models/{method_folder}/{model_file}"
+        model_path = os.path.join(method_dir, model_file)
 
         if model_path not in sequential_model_paths:
             sequential_model_paths.append(model_path)
@@ -571,15 +548,14 @@ def setSequentialModels(data: dict = Body(...)):
                 except Exception as e:
                     return {"error": f"Failed to load model: {str(e)}"}
 
-            display_name = f"{method_folder}/{model_file}"
-            loaded_model_names.append(display_name)
+            loaded_model_names.append(f"{method_folder}/{model_file}")
 
     return {"status": "ok", "models": loaded_model_names}
 
-@app.get("/predictsequential")
+@web_app.get("/predictsequential")
 def predictSequential():
     global uploaded_image, class_names, prompt_pre, prompt_suf, sequential_model_paths, loaded_models, include_base_clip
-    initialize_backend() # <--- LAZY LOAD TRIGGER
+    initialize_backend()
 
     if prompt_pre.endswith(" "):
         prompt_pre = prompt_pre[:-1]
@@ -595,15 +571,13 @@ def predictSequential():
     try:
         image = pre_process(uploaded_image).unsqueeze(0).to(device)
         text = clip.tokenize(prompts).to(device)
-
         all_results = {}
 
         if include_base_clip:
-            base_model = load_model("backend/models/base.pth")
+            base_model = load_model(os.path.join(BASE_DIR, "models", "base.pth"))
             with torch.no_grad():
                 logits_per_image, _ = base_model(image, text)
                 probs = logits_per_image.softmax(dim=-1).cpu().numpy()
-
             result = dict(zip(prompts, probs.tolist()[0]))
             result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
             all_results["Base CLIP"] = result
@@ -613,9 +587,7 @@ def predictSequential():
                 continue
 
             model = loaded_models[model_path]
-            model_file = os.path.basename(model_path)
-            method_folder = os.path.basename(os.path.dirname(model_path))
-            model_name = f"{method_folder}/{model_file}"
+            model_name = f"{os.path.basename(os.path.dirname(model_path))}/{os.path.basename(model_path)}"
 
             with torch.no_grad():
                 logits_per_image, _ = model(image, text)
@@ -631,15 +603,6 @@ def predictSequential():
         print("Error:", e)
         return {"error": str(e)}
 
-# ==========================================
-# LAMBDA HANDLER (MANGUM WRAPPER)
-# ==========================================
-@modal_app.function(
-    image=image, 
-    gpu="T4", 
-    memory=8192, # Give it 8 GB of RAM so you NEVER OOM again
-    secrets=[modal.Secret.from_name("aws-secret")] # We'll set this up next
-)
-@modal.asgi_app()
-def fastapi_app():
-    return app
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(web_app, host="0.0.0.0", port=8000)
