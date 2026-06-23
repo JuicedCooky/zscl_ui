@@ -1,6 +1,7 @@
 backend/models/
 backend (aws)/
 backend (modal)/
+frontend (old)/
 
 # backend/.dockerignore
 __pycache__/

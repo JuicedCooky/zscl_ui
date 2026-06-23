@@ -1,21 +1,32 @@
-from fastapi import FastAPI, UploadFile, File, Body
+﻿from fastapi import FastAPI, UploadFile, File, Body
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from botocore import UNSIGNED
-from botocore.config import Config
 from PIL import Image
 
 import os
+import sys
 import csv as _csv
 import gc
-import boto3
+import json
+import urllib.request
 
-S3_BUCKET = "continual-learning-bucket"
-S3_MODELS_PREFIX = "backend/models/"
+# Ensure the local clip/ package is found before any installed 'clip' PyPI package,
+# regardless of whether this file runs as a module (Docker) or as part of a package (local dev).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import clip
+
+# Create a global lock
+HF_REPO = "JuicedCooky/continual-learning"
+HF_BASE_URL = f"https://huggingface.co/{HF_REPO}/resolve/main"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 web_app = FastAPI()
+
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 web_app.add_middleware(
     CORSMiddleware,
@@ -27,7 +38,6 @@ web_app.add_middleware(
 
 # --- LAZY LOADING PLACEHOLDERS ---
 torch = None
-clip = None
 device = None
 pre_process = None
 initialized = False
@@ -46,32 +56,67 @@ def make_display_name(method_folder: str, filename: str) -> str:
     method = METHOD_DISPLAY.get(method_folder.lower(), method_folder.replace("+", "+").title())
     return f"{method} - {dataset.title()}"
 
-def _s3_public():
-    return boto3.client("s3", config=Config(signature_version=UNSIGNED), region_name="us-east-2")
+download_progress = {
+    "current_file": "",
+    "file_done": 0,
+    "file_total": 0,
+    "files_done": 0,
+    "files_total": 0,
+    "done": True,
+}
 
 def download_models_if_missing():
-    """Download any .pth files from the public S3 bucket that aren't present locally."""
+    """Download any .pth files from HuggingFace that aren't present locally."""
+    global download_progress
     models_dir = os.path.join(BASE_DIR, "models")
     os.makedirs(models_dir, exist_ok=True)
 
-    s3 = _s3_public()
-    paginator = s3.get_paginator("list_objects_v2")
+    api_url = f"https://huggingface.co/api/models/{HF_REPO}"
+    with urllib.request.urlopen(api_url) as r:
+        siblings = json.loads(r.read().decode()).get("siblings", [])
 
-    for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=S3_MODELS_PREFIX):
-        for obj in page.get("Contents", []):
-            key = obj["Key"]
-            rel = key[len(S3_MODELS_PREFIX):]
-            if not rel or not rel.endswith(".pth"):
-                continue
+    to_download = []
+    for s in siblings:
+        hf_path = s["rfilename"]
+        if not (hf_path.startswith("models/") and hf_path.endswith(".pth")):
+            continue
+        rel = hf_path[len("models/"):]
+        local_path = os.path.join(models_dir, *rel.split("/"))
+        if not os.path.isfile(local_path):
+            to_download.append((hf_path, local_path))
 
-            local_path = os.path.join(models_dir, *rel.split("/"))
-            if os.path.isfile(local_path):
-                continue
+    if not to_download:
+        return
 
-            os.makedirs(os.path.dirname(local_path), exist_ok=True)
-            print(f"Downloading {key} ...")
-            s3.download_file(S3_BUCKET, key, local_path)
-            print(f"Saved {local_path}")
+    download_progress = {
+        "current_file": "",
+        "file_done": 0,
+        "file_total": 0,
+        "files_done": 0,
+        "files_total": len(to_download),
+        "done": False,
+    }
+
+    for hf_path, local_path in to_download:
+        fname = os.path.basename(local_path)
+        download_progress["current_file"] = fname
+        download_progress["file_done"] = 0
+        download_progress["file_total"] = 0
+
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
+        url = f"{HF_BASE_URL}/{hf_path}"
+        print(f"Downloading {url} ...")
+
+        def _reporthook(blocks, block_size, total, _p=download_progress):
+            if total > 0:
+                _p["file_total"] = total
+            _p["file_done"] = min(blocks * block_size, total if total > 0 else blocks * block_size)
+
+        urllib.request.urlretrieve(url, local_path, reporthook=_reporthook)
+        download_progress["files_done"] += 1
+        print(f"Saved {local_path}")
+
+    download_progress["done"] = True
 
 def discover_models():
     """Walk local models/ dir and return sorted list of dicts."""
@@ -133,32 +178,17 @@ def sync_models():
     active_models = [1 if model_active_state.get(p, False) else 0 for p in model_paths]
     return discovered
 
-_base_state_dict_cache = None
-
-def _get_base_state_dict():
-    global _base_state_dict_cache
-    if _base_state_dict_cache is None:
-        base_path = os.path.join(BASE_DIR, "models", "base.pth")
-        _base_state_dict_cache = torch.load(base_path, map_location=device)["state_dict"]
-    return _base_state_dict_cache
-
 def load_model(model_path):
-    """Build CLIP architecture from base.pth, then overlay fine-tuned weights."""
-    model = clip.model.build_model(_get_base_state_dict()).to(device)
-
-    base_path = os.path.join(BASE_DIR, "models", "base.pth")
-    if model_path != base_path:
-        checkpoint = torch.load(model_path, map_location=device)
-        model.load_state_dict(checkpoint["state_dict"], strict=False)
-        del checkpoint
-        gc.collect()
-
+    model, _, _ = clip.load("ViT-B/16", device=device, jit=False)
+    checkpoint = torch.load(model_path, map_location=device)
+    model.load_state_dict(checkpoint["state_dict"], strict=False)
+    del checkpoint
     model.eval()
     return model
 
 def initialize_backend():
     global initialized, loaded_models, model_paths, class_names
-    global torch, clip, device, pre_process
+    global torch, device, pre_process
 
     if initialized:
         return
@@ -167,24 +197,9 @@ def initialize_backend():
     download_models_if_missing()
 
     import torch
-    import clip
-    from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
-
-    try:
-        from torchvision.transforms import InterpolationMode
-        _BICUBIC = InterpolationMode.BICUBIC
-    except ImportError:
-        _BICUBIC = Image.BICUBIC
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    pre_process = Compose([
-        Resize(224, interpolation=_BICUBIC),
-        CenterCrop(224),
-        lambda image: image.convert("RGB"),
-        ToTensor(),
-        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
-    ])
+    _, _, pre_process = clip.load("ViT-B/16", device=device, jit=False)
 
     try:
         class_names = _load_classnames()
@@ -308,6 +323,10 @@ def getTsneCsv3dFile(method: str, filename: str):
     if not os.path.isfile(path):
         return {"error": "File not found"}
     return parse_tsne_csv_3d(path)
+
+@web_app.get("/download-progress")
+def get_download_progress():
+    return download_progress
 
 @web_app.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
@@ -442,7 +461,6 @@ def setActiveModels(data: list = Body(...), preload: bool = False):
 @web_app.get("/predict_lowmem")
 def predict_lowmem():
     global uploaded_image, class_names, prompt_pre, prompt_suf, active_models, model_paths
-    global _base_state_dict_cache
     initialize_backend()
 
     if uploaded_image is None:
@@ -478,7 +496,6 @@ def predict_lowmem():
             del model
             gc.collect()
 
-        _base_state_dict_cache = None
         gc.collect()
 
         if device.type == "cuda":
@@ -574,7 +591,7 @@ def predictSequential():
         all_results = {}
 
         if include_base_clip:
-            base_model = load_model(os.path.join(BASE_DIR, "models", "base.pth"))
+            base_model, _, _ = clip.load("ViT-B/16", device=device, jit=False)
             with torch.no_grad():
                 logits_per_image, _ = base_model(image, text)
                 probs = logits_per_image.softmax(dim=-1).cpu().numpy()

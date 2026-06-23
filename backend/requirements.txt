@@ -2,8 +2,6 @@
 fastapi
 uvicorn
 python-multipart
-boto3
-botocore
 Pillow
 torch
 torchvision

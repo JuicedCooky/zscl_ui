@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 const API = import.meta.env.VITE_API_URL;
 import { UploadImage } from "../components/UploadImage";
 import LoadingSpinner from "../components/LoadingSpinner";
+import ModelDownloadProgress from "../components/ModelDownloadProgress";
 import { ClassTextArea } from "../components/ClassTextArea";
 import { ProbabilityBar } from "../components/ProbabilityBar";
 import { Camera } from "../components/Camera";
@@ -57,9 +58,24 @@ export default function Home({className}) {
     const [availableModels, setAvailableModels] = useState([]);
     const [selectedModels, setSelectedModels] = useState([]);
     const [isLoadingModels, setIsLoadingModels] = useState(true);
+    const [downloadProgress, setDownloadProgress] = useState(null);
 
     useEffect(() => {
         setIsLoadingModels(true);
+        let stopped = false;
+
+        const poll = async () => {
+            while (!stopped) {
+                try {
+                    const r = await fetch(`${API}/download-progress`);
+                    const data = await r.json();
+                    setDownloadProgress(data);
+                } catch {}
+                await new Promise(res => setTimeout(res, 400));
+            }
+        };
+        poll();
+
         fetch(`${API}/getmodels`)
             .then(r => r.json())
             .then(data => {
@@ -67,7 +83,13 @@ export default function Home({className}) {
                 setSelectedModels(data.models.map(m => m.active));
             })
             .catch(() => {})
-            .finally(() => setIsLoadingModels(false));
+            .finally(() => {
+                stopped = true;
+                setIsLoadingModels(false);
+                setDownloadProgress(null);
+            });
+
+        return () => { stopped = true; };
     }, []);
 
     async function handlePredict(){
@@ -349,7 +371,11 @@ export default function Home({className}) {
                         Selecting multiple lets you compare how the model changes as it learns more tasks.
                     </span>
                 </div>
-                {isLoadingModels && <LoadingSpinner />}
+                {isLoadingModels && (
+                    downloadProgress && downloadProgress.files_total > 0 && !downloadProgress.done
+                        ? <ModelDownloadProgress progress={downloadProgress} />
+                        : <LoadingSpinner />
+                )}
                 {!isLoadingModels && availableModels.length === 0 && (
                     <span className="text-[var(--color-honeydew)]/50 text-sm">No models found in models/</span>
                 )}

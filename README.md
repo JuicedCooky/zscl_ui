@@ -32,11 +32,11 @@ npm run build --prefix ./frontend/
 Run the server starting from the parent directory of this repository:
 
 ```
-python -m uvicorn backend.backend:app --reload
+python -m uvicorn backend.backend:web_app --reload
 ```
 or
 ```
-uvicorn backend.backend:app --reload
+uvicorn backend.backend:web_app --reload
 ```
 
 Run frontend only:

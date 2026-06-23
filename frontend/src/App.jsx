@@ -1,15 +1,13 @@
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import './App.css'
 import Home from './pages/Home.jsx'
+import Overview from './pages/Overview.jsx'
 import About from './pages/About.jsx'
 import React from "react"
 import './index.css'
-import { IoHomeOutline } from "react-icons/io5"
-import { IoInformationCircleOutline } from "react-icons/io5"
+import { IoHomeOutline, IoInformationCircleOutline, IoSwapHorizontal, IoCubeOutline, IoPlayCircleOutline } from "react-icons/io5"
 import Results from './pages/Results.jsx'
 import { IoMdBook } from "react-icons/io";
-import { IoSwapHorizontal } from "react-icons/io5";
-import { IoCubeOutline } from "react-icons/io5";
 import TSNETransition from './pages/TSNETransition.jsx'
 import TSNETransition3D from './pages/TSNETransition3D.jsx'
 
@@ -22,6 +20,7 @@ function App() {
         <nav className="w-24 bg-[var(--color-onyx)]/50 border-r border-[var(--color-honeydew)]/20 flex flex-col items-center py-4 gap-4">
           <NavLink
             to="/"
+            end
             className={({ isActive }) =>
               `p-3 rounded-lg transition duration-300 flex flex-col items-center gap-1 w-full ${
                 isActive
@@ -33,6 +32,21 @@ function App() {
           >
             <IoHomeOutline className="text-2xl" />
             <span className="text-xs">Home</span>
+          </NavLink>
+
+          <NavLink
+            to="/demo"
+            className={({ isActive }) =>
+              `p-3 rounded-lg transition duration-300 flex flex-col items-center gap-1 w-full ${
+                isActive
+                  ? 'bg-[var(--color-magenta)]/60 text-[var(--color-honeydew)]'
+                  : 'hover:bg-[var(--color-magenta)]/30 text-[var(--color-honeydew)]'
+              }`
+            }
+            title="Demo"
+          >
+            <IoPlayCircleOutline className="text-2xl" />
+            <span className="text-xs">Demo</span>
           </NavLink>
 
           <NavLink
@@ -98,7 +112,8 @@ function App() {
         {/* Main Content */}
         <div className="flex-1 overflow-auto">
           <Routes>
-            <Route path="/" element={<Home className="relative z-10" />} />
+            <Route path="/" element={<Overview className="relative z-10" />} />
+            <Route path="/demo" element={<Home className="relative z-10" />} />
             <Route path="/results" element={<Results className="relative z-10" />} />
             <Route path="/tsne-transition" element={<TSNETransition className="relative z-10" />} />
             <Route path="/tsne-transition-3d" element={<TSNETransition3D className="relative z-10" />} />
