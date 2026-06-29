@@ -12,7 +12,41 @@ import { IoIosSend  } from "react-icons/io";
 import { IoFolderOpenOutline } from "react-icons/io5";
 import { FaEdit } from "react-icons/fa";
 import { DatasetImageSelector } from "../components/DatasetImageSelector";
-import { FiChevronDown } from "react-icons/fi";
+import { FiChevronDown, FiChevronRight } from "react-icons/fi";
+
+function ScrollableRow({ children, wrapperClass = "", className = "" }) {
+    const ref = React.useRef(null);
+    const [canScrollRight, setCanScrollRight] = React.useState(false);
+
+    const check = React.useCallback(() => {
+        const el = ref.current;
+        if (el) setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    }, []);
+
+    React.useEffect(() => {
+        check();
+        const el = ref.current;
+        if (!el) return;
+        const ro = new ResizeObserver(check);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [check]);
+
+    return (
+        <div className={`flex items-center gap-1 ${wrapperClass}`}>
+            <div
+                ref={ref}
+                onScroll={check}
+                className={`flex flex-nowrap overflow-x-auto pb-1 gap-2 items-center flex-1 min-w-0 ${className}`}
+            >
+                {children}
+            </div>
+            {canScrollRight && (
+                <FiChevronRight className="text-white/60 text-lg shrink-0" />
+            )}
+        </div>
+    );
+}
 
 const METHOD_DESCRIPTIONS = {
     "base model":        "Unmodified CLIP ViT-B/16 with no task-specific training. Serves as the zero-shot baseline before any continual learning.",
@@ -287,37 +321,40 @@ export default function Home({className}) {
                         { n: "02", label: "Select one or more model checkpoints to compare" },
                         { n: "03", label: "Hit Predict to see results side by side" },
                     ].map(({ n, label }) => (
-                        <div key={n} className="bg-white/5 border border-[var(--color-honeydew)]/10 rounded-lg px-4 py-3 flex items-start gap-3">
-                            <span className="text-xl font-bold text-[var(--color-honeydew)]/20 leading-none mt-0.5 tabular-nums shrink-0">{n}</span>
-                            <span className="text-[var(--color-honeydew)]/55 text-xs leading-relaxed">{label}</span>
+                        <div key={n} className="bg-white/5 border border-[var(--color-honeydew)]/10 rounded-lg px-3 py-3 flex flex-col gap-1.5 overflow-hidden">
+                            <span className="text-xl font-bold text-[var(--color-honeydew)]/20 leading-none tabular-nums">{n}</span>
+                            <span className="text-[var(--color-honeydew)]/55 text-xs leading-relaxed break-words">{label}</span>
                         </div>
                     ))}
                 </div>
             </div>
-            <div className="w-1/2 bg-white/10 rounded-md p-2 border-1 gap-2 flex relative">
+            <div className="w-10/12 sm:w-1/2 bg-white/10 rounded-md p-2 gap-2 flex relative">
                 <button className={`${inputMode !== "upload" ?
                     "hover:border-solid hover:bg-[var(--color-magenta)]/20 hover:border-[var(--color-honeydew)]/60 transition duration-300"
                     : ""}
-                w-1/3 rounded-md p-3 z-1 border-[var(--color-honeydew)]/30 border-1`}
+                w-1/3 rounded-md p-2 sm:p-3 z-1 border-[var(--color-honeydew)]/30 border-1 text-xs sm:text-sm`}
                     onClick={() => { setInputMode("upload"); setPreview(null); setCorrectClass(null); }}>
-                    Upload Image
+                    <span className="hidden sm:inline">Upload Image</span>
+                    <span className="sm:hidden">Upload</span>
                 </button>
 
                 <button className={`${inputMode !== "camera" ?
                     "hover:border-solid hover:bg-[var(--color-magenta)]/20 hover:border-[var(--color-honeydew)]/60 transition duration-300"
                     : ""}
-                w-1/3 rounded-md p-3 z-1 border-[var(--color-honeydew)]/30 border-1`}
+                w-1/3 rounded-md p-2 sm:p-3 z-1 border-[var(--color-honeydew)]/30 border-1 text-xs sm:text-sm`}
                     onClick={() => { setInputMode("camera"); setPreview(null); setCorrectClass(null); }}>
-                    Capture Image
+                    <span className="hidden sm:inline">Capture Image</span>
+                    <span className="sm:hidden">Camera</span>
                 </button>
 
                 <button className={`${inputMode !== "dataset" ?
                     "hover:border-solid hover:bg-[var(--color-magenta)]/20 hover:border-[var(--color-honeydew)]/60 transition duration-300"
                     : ""}
-                w-1/3 rounded-md p-3 z-1 border-[var(--color-honeydew)]/30 border-1 flex items-center justify-center gap-2`}
+                w-1/3 rounded-md p-2 sm:p-3 z-1 border-[var(--color-honeydew)]/30 border-1 flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm`}
                     onClick={() => { setInputMode("dataset"); setPreview(null); }}>
-                    <IoFolderOpenOutline />
-                    Dataset Images
+                    <IoFolderOpenOutline className="shrink-0" />
+                    <span className="hidden sm:inline">Dataset Images</span>
+                    <span className="sm:hidden">Dataset</span>
                 </button>
 
                 <div className={`transition duration-300
@@ -442,9 +479,9 @@ export default function Home({className}) {
                                         <MethodLabel name="Base Model" />
                                         <div className="flex-1 border-t-2 border-[var(--color-honeydew)]/50"></div>
                                     </div>
-                                    <div className="flex flex-wrap gap-2 items-center pl-3 border-l-2 border-[var(--color-honeydew)]/20">
+                                    <ScrollableRow wrapperClass="pl-3 border-l-2 border-[var(--color-honeydew)]/20">
                                         {renderConnected(base, base.map(() => "Base"))}
-                                    </div>
+                                    </ScrollableRow>
                                 </div>
                             )}
                             {finetune.length > 0 && (
@@ -453,9 +490,9 @@ export default function Home({className}) {
                                         <MethodLabel name="Finetune Baseline" />
                                         <div className="flex-1 border-t-2 border-[var(--color-honeydew)]/50"></div>
                                     </div>
-                                    <div className="flex flex-wrap gap-2 items-center pl-3 border-l-2 border-[var(--color-honeydew)]/20">
+                                    <ScrollableRow wrapperClass="pl-3 border-l-2 border-[var(--color-honeydew)]/20">
                                         {renderConnected(finetune)}
-                                    </div>
+                                    </ScrollableRow>
                                 </div>
                             )}
                             {folderEntries.length > 0 && (
@@ -470,7 +507,7 @@ export default function Home({className}) {
                                     {idx > 0 && <hr className="border-[var(--color-honeydew)]/20" />}
                                     <div className="flex flex-col gap-2">
                                         <MethodLabel name={folder} />
-                                        <div className="flex flex-wrap gap-2 items-center">{renderConnected(models)}</div>
+                                        <ScrollableRow>{renderConnected(models)}</ScrollableRow>
                                     </div>
                                 </React.Fragment>
                             ))}
