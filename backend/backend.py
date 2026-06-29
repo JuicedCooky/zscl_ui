@@ -199,6 +199,7 @@ def initialize_backend():
     import torch
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device} ({'GPU' if device.type == 'cuda' else 'CPU'})")
     _, _, pre_process = clip.load("ViT-B/16", device=device, jit=False)
 
     try:
