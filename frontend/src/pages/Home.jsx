@@ -621,6 +621,31 @@ export default function Home({className}) {
                                 })
                                 : Object.entries(results)
                             ).map(([modelName, modelResults], index) => {
+                                if (modelResults && modelResults.error) {
+                                    const meta = modelLabelMap[modelName];
+                                    const group = meta?.group ?? (modelName.includes("/") ? modelName.split("/")[0] : "Base Model");
+                                    const label = meta?.label ?? modelName;
+                                    return (
+                                        <div key={modelName} className="flex flex-col gap-2 min-w-[280px] flex-1 bg-white/5 rounded-lg p-4">
+                                            <div className="flex items-center gap-2 border-b border-[var(--color-honeydew)]/30 pb-2 flex-wrap">
+                                                <span className="bg-[var(--color-magenta)]/60 text-xs px-2 py-1 rounded self-start mt-0.5">
+                                                    #{index + 1}
+                                                </span>
+                                                <div className="flex flex-col flex-1 min-w-0 gap-1" title={modelName}>
+                                                    <span className="text-[10px] uppercase tracking-widest font-semibold px-1.5 py-0.5 rounded bg-[var(--color-emerald)]/50 text-[var(--color-honeydew)]/80 self-start leading-tight">
+                                                        {group}
+                                                    </span>
+                                                    <span className="text-base font-semibold truncate leading-snug">
+                                                        {label}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="text-red-400 bg-red-950/40 border border-red-700/40 rounded-md px-3 py-2 text-sm">
+                                                Failed to run this checkpoint — it may be corrupted. {modelResults.error}
+                                            </div>
+                                        </div>
+                                    );
+                                }
                                 const allEntries = Object.entries(modelResults);
                                 const correctLabel = findCorrectLabel(modelResults, correctClass);
                                 const correctRank = correctLabel

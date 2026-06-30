@@ -19,17 +19,17 @@ fi
 if [ "$HAS_GPU" = true ]; then
     echo "NVIDIA GPU detected successfully!"
     
-    # Verify if a working CUDA-enabled PyTorch is already present
-    if ! python3 -c "import torch; assert torch.cuda.is_available()" &> /dev/null; then
-        echo "CUDA PyTorch is missing or invalid. Purging CPU versions..."
+    # 💥 CRITICAL FIX: Verify CUDA is working AND that the PyTorch binary supports Blackwell (sm_120)
+    if ! python3 -c "import torch; assert torch.cuda.is_available(); assert 'sm_120' in torch.cuda.get_arch_list()" &> /dev/null; then
+        echo "PyTorch is missing, invalid, or lacks Blackwell (sm_120) support. Purging old packages..."
         
-        # 💥 THE RECOVERY LINE: Force-remove the CPU versions from the virtual environment
+        # Wipe the older/incompatible builds
         pip uninstall -y torch torchvision
         
-        echo "Installing PyTorch with CUDA 12.4 support..."
-        pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu124
+        echo "Installing PyTorch with CUDA 12.8 support (RTX 50-series native)..."
+        pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu128
     else
-        echo "CUDA PyTorch is already installed and verified operational!"
+        echo "CUDA PyTorch with Blackwell support is verified operational!"
     fi
 else
     echo "No NVIDIA GPU detected by the container. Ensuring CPU PyTorch..."

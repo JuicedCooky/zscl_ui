@@ -83,7 +83,9 @@ def download_models_if_missing():
     models_dir = os.path.join(BASE_DIR, "models")
     os.makedirs(models_dir, exist_ok=True)
 
-    api_url = f"https://huggingface.co/api/models/{HF_REPO}"
+    # blobs=true so each sibling carries its expected size — needed to detect
+    # local files left truncated by an interrupted/corrupted prior download.
+    api_url = f"https://huggingface.co/api/models/{HF_REPO}?blobs=true"
     with urllib.request.urlopen(api_url) as r:
         siblings = json.loads(r.read().decode()).get("siblings", [])
 
@@ -94,7 +96,7 @@ def download_models_if_missing():
             continue
         rel = hf_path[len("models/"):]
         local_path = os.path.join(models_dir, *rel.split("/"))
-        all_files.append((hf_path, local_path))
+        all_files.append((hf_path, local_path, s.get("size")))
 
     download_progress = {
         "files": [],
@@ -105,13 +107,16 @@ def download_models_if_missing():
     }
 
     to_download = []
-    for hf_path, local_path in all_files:
+    for hf_path, local_path, expected_size in all_files:
         fname = os.path.basename(local_path)
-        already_present = os.path.isfile(local_path)
+        local_size = os.path.getsize(local_path) if os.path.isfile(local_path) else None
+        already_present = local_size is not None and (expected_size is None or local_size == expected_size)
+        if local_size is not None and not already_present:
+            print(f"{fname} is truncated/corrupted on disk ({local_size} != {expected_size} bytes) — re-downloading")
         file_entry = {
             "name": fname,
-            "done": os.path.getsize(local_path) if already_present else 0,
-            "total": os.path.getsize(local_path) if already_present else 0,
+            "done": local_size if already_present else 0,
+            "total": local_size if already_present else 0,
             "completed": already_present,
         }
         download_progress["files"].append(file_entry)
@@ -417,13 +422,17 @@ def predict():
             model = loaded_models[model_path]
             model_name = model_meta.get(model_path, {}).get("rel", os.path.basename(model_path))
 
-            with torch.no_grad():
-                logits_per_image, _ = model(image, text)
-                probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+            try:
+                with torch.no_grad():
+                    logits_per_image, _ = model(image, text)
+                    probs = logits_per_image.softmax(dim=-1).cpu().numpy()
 
-            result = dict(zip(prompts, probs.tolist()[0]))
-            result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
-            all_results[model_name] = result
+                result = dict(zip(prompts, probs.tolist()[0]))
+                result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
+                all_results[model_name] = result
+            except Exception as e:
+                print(f"Failed to run model {model_name}: {e}")
+                all_results[model_name] = {"error": str(e)}
 
         return all_results
 
@@ -496,15 +505,17 @@ def setActiveModels(data: list = Body(...), preload: bool = False):
     for i, is_active in enumerate(active_models):
         model_active_state[model_paths[i]] = (is_active == 1)
 
+    failed = []
     if preload:
         for i, is_active in enumerate(active_models):
             if is_active == 1 and model_paths[i] not in loaded_models:
                 try:
                     loaded_models[model_paths[i]] = load_model(model_paths[i])
                 except Exception as e:
-                    return {"error": f"Failed to load model {model_paths[i]}: {str(e)}"}
+                    print(f"Failed to load model {model_paths[i]}: {e}")
+                    failed.append(model_meta.get(model_paths[i], {}).get("rel", os.path.basename(model_paths[i])))
 
-    return {"status": "ok", "active": active_models}
+    return {"status": "ok", "active": active_models, "failed": failed}
 
 @web_app.get("/predict_lowmem")
 def predict_lowmem():
@@ -528,17 +539,22 @@ def predict_lowmem():
         all_results = {}
 
         for model_path in active_model_paths:
-            model = load_model(model_path)
             model_name = model_meta.get(model_path, {}).get("rel", os.path.basename(model_path))
-            with torch.no_grad():
-                logits_per_image, _ = model(image, text)
-                probs = logits_per_image.softmax(dim=-1).cpu().numpy()
+            try:
+                model = load_model(model_path)
+                with torch.no_grad():
+                    logits_per_image, _ = model(image, text)
+                    probs = logits_per_image.softmax(dim=-1).cpu().numpy()
 
-            result = dict(zip(prompts, probs.tolist()[0]))
-            result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
-            all_results[model_name] = result
+                result = dict(zip(prompts, probs.tolist()[0]))
+                result = dict(sorted(result.items(), key=lambda item: item[1], reverse=True))
+                all_results[model_name] = result
 
-            del model
+                del model
+            except Exception as e:
+                print(f"Failed to run model {model_name}: {e}")
+                all_results[model_name] = {"error": str(e)}
+
             gc.collect()
 
         gc.collect()
