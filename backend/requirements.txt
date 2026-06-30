@@ -3,7 +3,6 @@ fastapi
 uvicorn
 python-multipart
 Pillow
-torch
 torchvision
 numpy
 tqdm

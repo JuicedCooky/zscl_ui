@@ -8,6 +8,8 @@ import sys
 import csv as _csv
 import gc
 import json
+import threading
+import time
 import urllib.request
 
 # Ensure the local clip/ package is found before any installed 'clip' PyPI package,
@@ -15,7 +17,6 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import clip
 
-# Create a global lock
 HF_REPO = "JuicedCooky/continual-learning"
 HF_BASE_URL = f"https://huggingface.co/{HF_REPO}/resolve/main"
 
@@ -41,6 +42,10 @@ torch = None
 device = None
 pre_process = None
 initialized = False
+# Guards initialize_backend() so concurrent requests (FastAPI runs sync
+# endpoints in a threadpool) can't all race past the `initialized` check
+# and each independently re-download the full model set.
+_init_lock = threading.Lock()
 
 uploaded_image = None
 
@@ -57,13 +62,20 @@ def make_display_name(method_folder: str, filename: str) -> str:
     return f"{method} - {dataset.title()}"
 
 download_progress = {
-    "current_file": "",
-    "file_done": 0,
-    "file_total": 0,
+    "files": [],
     "files_done": 0,
     "files_total": 0,
     "done": True,
+    "paused": False,
 }
+
+# Set while the user has paused downloads; checked between files and
+# from within the urlretrieve reporthook so a pause takes effect mid-file too.
+_download_pause_event = threading.Event()
+
+def _wait_while_paused():
+    while _download_pause_event.is_set():
+        time.sleep(0.2)
 
 def download_models_if_missing():
     """Download any .pth files from HuggingFace that aren't present locally."""
@@ -75,44 +87,58 @@ def download_models_if_missing():
     with urllib.request.urlopen(api_url) as r:
         siblings = json.loads(r.read().decode()).get("siblings", [])
 
-    to_download = []
+    all_files = []
     for s in siblings:
         hf_path = s["rfilename"]
         if not (hf_path.startswith("models/") and hf_path.endswith(".pth")):
             continue
         rel = hf_path[len("models/"):]
         local_path = os.path.join(models_dir, *rel.split("/"))
-        if not os.path.isfile(local_path):
-            to_download.append((hf_path, local_path))
-
-    if not to_download:
-        return
+        all_files.append((hf_path, local_path))
 
     download_progress = {
-        "current_file": "",
-        "file_done": 0,
-        "file_total": 0,
+        "files": [],
         "files_done": 0,
-        "files_total": len(to_download),
+        "files_total": len(all_files),
         "done": False,
+        "paused": _download_pause_event.is_set(),
     }
 
-    for hf_path, local_path in to_download:
+    to_download = []
+    for hf_path, local_path in all_files:
         fname = os.path.basename(local_path)
-        download_progress["current_file"] = fname
-        download_progress["file_done"] = 0
-        download_progress["file_total"] = 0
+        already_present = os.path.isfile(local_path)
+        file_entry = {
+            "name": fname,
+            "done": os.path.getsize(local_path) if already_present else 0,
+            "total": os.path.getsize(local_path) if already_present else 0,
+            "completed": already_present,
+        }
+        download_progress["files"].append(file_entry)
+        if already_present:
+            download_progress["files_done"] += 1
+        else:
+            to_download.append((hf_path, local_path, file_entry))
+
+    if not to_download:
+        download_progress["done"] = True
+        return
+
+    for hf_path, local_path, file_entry in to_download:
+        _wait_while_paused()
 
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
         url = f"{HF_BASE_URL}/{hf_path}"
         print(f"Downloading {url} ...")
 
-        def _reporthook(blocks, block_size, total, _p=download_progress):
+        def _reporthook(blocks, block_size, total, _entry=file_entry):
+            _wait_while_paused()
             if total > 0:
-                _p["file_total"] = total
-            _p["file_done"] = min(blocks * block_size, total if total > 0 else blocks * block_size)
+                _entry["total"] = total
+            _entry["done"] = min(blocks * block_size, total if total > 0 else blocks * block_size)
 
         urllib.request.urlretrieve(url, local_path, reporthook=_reporthook)
+        file_entry["completed"] = True
         download_progress["files_done"] += 1
         print(f"Saved {local_path}")
 
@@ -154,6 +180,7 @@ def discover_models():
 # --- LAZY LOADING VARIABLES ---
 model_active_state: dict = {}
 model_paths: list = []
+model_meta: dict = {}
 active_models: list = []
 loaded_models = {}
 
@@ -169,12 +196,13 @@ sequential_model_paths = []
 include_base_clip = False
 
 def sync_models():
-    global model_paths, active_models, model_active_state
+    global model_paths, active_models, model_active_state, model_meta
     discovered = discover_models()
     for i, m in enumerate(discovered):
         if m["path"] not in model_active_state:
             model_active_state[m["path"]] = (i == 0)
     model_paths = [m["path"] for m in discovered]
+    model_meta = {m["path"]: m for m in discovered}
     active_models = [1 if model_active_state.get(p, False) else 0 for p in model_paths]
     return discovered
 
@@ -193,31 +221,35 @@ def initialize_backend():
     if initialized:
         return
 
-    print("Initializing ML assets...")
-    download_models_if_missing()
+    with _init_lock:
+        if initialized:
+            return
 
-    import torch
+        print("Initializing ML assets...")
+        download_models_if_missing()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device} ({'GPU' if device.type == 'cuda' else 'CPU'})")
-    _, _, pre_process = clip.load("ViT-B/16", device=device, jit=False)
+        import torch
 
-    try:
-        class_names = _load_classnames()
-    except Exception as e:
-        print(f"Failed to load classnames: {e}")
-        class_names = ["object"]
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {device} ({'GPU' if device.type == 'cuda' else 'CPU'})")
+        _, _, pre_process = clip.load("ViT-B/16", device=device, jit=False)
 
-    sync_models()
-
-    if model_paths:
         try:
-            loaded_models[model_paths[0]] = load_model(model_paths[0])
+            class_names = _load_classnames()
         except Exception as e:
-            print(f"Failed to load default model: {e}")
+            print(f"Failed to load classnames: {e}")
+            class_names = ["object"]
 
-    initialized = True
-    print("Initialization complete!")
+        sync_models()
+
+        if model_paths:
+            try:
+                loaded_models[model_paths[0]] = load_model(model_paths[0])
+            except Exception as e:
+                print(f"Failed to load default model: {e}")
+
+        initialized = True
+        print("Initialization complete!")
 
 CLASSNAMES_FILE = os.path.join(BASE_DIR, "classes", "custom_classes.txt")
 
@@ -329,6 +361,24 @@ def getTsneCsv3dFile(method: str, filename: str):
 def get_download_progress():
     return download_progress
 
+@web_app.post("/pause-downloads")
+def pause_downloads():
+    _download_pause_event.set()
+    download_progress["paused"] = True
+    return {"status": "ok", "paused": True}
+
+@web_app.post("/resume-downloads")
+def resume_downloads():
+    _download_pause_event.clear()
+    download_progress["paused"] = False
+    return {"status": "ok", "paused": False}
+
+@web_app.get("/device")
+def get_device():
+    if device is None:
+        return {"device": "unknown"}
+    return {"device": str(device)}
+
 @web_app.post("/upload")
 async def upload_image(file: UploadFile = File(...)):
     global uploaded_image
@@ -365,10 +415,7 @@ def predict():
                 continue
 
             model = loaded_models[model_path]
-            model_name = make_display_name(
-                os.path.basename(os.path.dirname(model_path)),
-                os.path.basename(model_path),
-            )
+            model_name = model_meta.get(model_path, {}).get("rel", os.path.basename(model_path))
 
             with torch.no_grad():
                 logits_per_image, _ = model(image, text)
@@ -482,10 +529,7 @@ def predict_lowmem():
 
         for model_path in active_model_paths:
             model = load_model(model_path)
-            model_name = make_display_name(
-                os.path.basename(os.path.dirname(model_path)),
-                os.path.basename(model_path),
-            )
+            model_name = model_meta.get(model_path, {}).get("rel", os.path.basename(model_path))
             with torch.no_grad():
                 logits_per_image, _ = model(image, text)
                 probs = logits_per_image.softmax(dim=-1).cpu().numpy()

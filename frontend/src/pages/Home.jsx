@@ -93,6 +93,7 @@ export default function Home({className}) {
     const [selectedModels, setSelectedModels] = useState([]);
     const [isLoadingModels, setIsLoadingModels] = useState(true);
     const [downloadProgress, setDownloadProgress] = useState(null);
+    const [backendDevice, setBackendDevice] = useState(null);
 
     useEffect(() => {
         setIsLoadingModels(true);
@@ -121,10 +122,20 @@ export default function Home({className}) {
                 stopped = true;
                 setIsLoadingModels(false);
                 setDownloadProgress(null);
+                fetch(`${API}/device`).then(r => r.json()).then(d => setBackendDevice(d.device)).catch(() => {});
             });
 
         return () => { stopped = true; };
     }, []);
+
+    const toggleDownloadPause = useCallback(async () => {
+        const endpoint = downloadProgress?.paused ? "resume-downloads" : "pause-downloads";
+        try {
+            const r = await fetch(`${API}/${endpoint}`, { method: "POST" });
+            const data = await r.json();
+            setDownloadProgress(prev => prev ? { ...prev, paused: data.paused } : prev);
+        } catch {}
+    }, [downloadProgress?.paused]);
 
     async function handlePredict(){
         if (isPredicting) return;
@@ -231,12 +242,12 @@ export default function Home({className}) {
         others.forEach(m => { const f = m.rel.split("/")[0]; (folderMap[f] ??= []).push(m); });
 
         const map = {};
-        base.forEach(m => { map[m.display_name] = { label: "Base", group: "Base Model" }; });
+        base.forEach(m => { map[m.rel] = { label: "Base", group: "Base Model", rel: m.rel }; });
 
         const addCumulative = (models, group) =>
             models.forEach((model, idx) => {
                 const label = models.slice(0, idx + 1).map(m => m.display_name.split("_")[1]).join(", ");
-                map[model.display_name] = { label, group };
+                map[model.rel] = { label, group, rel: model.rel };
             });
 
         addCumulative(finetune, "Finetune Baseline");
@@ -410,7 +421,7 @@ export default function Home({className}) {
                 </div>
                 {isLoadingModels && (
                     downloadProgress && downloadProgress.files_total > 0 && !downloadProgress.done
-                        ? <ModelDownloadProgress progress={downloadProgress} />
+                        ? <ModelDownloadProgress progress={downloadProgress} onTogglePause={toggleDownloadPause} />
                         : <LoadingSpinner />
                 )}
                 {!isLoadingModels && availableModels.length === 0 && (
@@ -440,6 +451,7 @@ export default function Home({className}) {
                                 className={selected ? "bg-green-400/35 hover:bg-red-500/40" : "bg-white/20"}
                             >
                                 <button
+                                    title={model.rel}
                                     style={{ paddingLeft, paddingRight, border: "none", flex: 1 }}
                                     className={`btn ${selected ? "bg-green-700/40 hover:bg-red-700/50" : "bg-transparent hover:bg-gray-600/50"}`}
                                     onClick={() => setSelectedModels(prev => {
@@ -515,26 +527,33 @@ export default function Home({className}) {
                     );
                 })()}
             </div>
-            <div className="flex items-center gap-3">
-                <button
-                    onClick={handlePredict}
-                    disabled={isPredicting}
-                    className="btn gap-3 px-4 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <IoIosSend />
-                    <span>Predict</span>
-                </button>
-                <button
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md border-1 text-sm transition duration-200 ${
-                        lowMemMode
-                            ? "bg-[var(--color-magenta)]/40 border-[var(--color-honeydew)]/60"
-                            : "bg-white/10 border-[var(--color-onyx)] hover:bg-white/20"
-                    }`}
-                    onClick={() => setLowMemMode(v => !v)}
-                    title="Load and unload each model one at a time instead of keeping all in memory"
-                >
-                    Low memory
-                </button>
+            <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handlePredict}
+                        disabled={isPredicting}
+                        className="btn gap-3 px-4 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <IoIosSend />
+                        <span>Predict</span>
+                    </button>
+                    <button
+                        className={`flex items-center gap-2 px-3 py-2 rounded-md border-1 text-sm transition duration-200 ${
+                            lowMemMode
+                                ? "bg-[var(--color-magenta)]/40 border-[var(--color-honeydew)]/60"
+                                : "bg-white/10 border-[var(--color-onyx)] hover:bg-white/20"
+                        }`}
+                        onClick={() => setLowMemMode(v => !v)}
+                        title="Load and unload each model one at a time instead of keeping all in memory"
+                    >
+                        Low memory
+                    </button>
+                </div>
+                {backendDevice && (
+                    <span className="text-xs text-[var(--color-honeydew)]/35">
+                        Backend running on <span className={backendDevice.includes("cuda") ? "text-green-400/60" : "text-[var(--color-honeydew)]/50"}>{backendDevice}</span>
+                    </span>
+                )}
             </div>
             <hr className="w-9/10  border-[var(--color-honeydew)]/50"></hr>
 
@@ -614,6 +633,11 @@ export default function Home({className}) {
                                     : limitProbabilities === "all"
                                         ? allEntries
                                         : allEntries.slice(0, Number(limitProbabilities));
+                                const meta = modelLabelMap[modelName];
+                                // modelName is the backend's rel path (e.g. "finetune/1_dtd.pth"),
+                                // so even if the map lookup misses, the method can still be derived from it.
+                                const group = meta?.group ?? (modelName.includes("/") ? modelName.split("/")[0] : "Base Model");
+                                const label = meta?.label ?? modelName;
                                 return (
                                     <div key={modelName} className="flex flex-col gap-2 min-w-[280px] flex-1 bg-white/5 rounded-lg p-4">
                                         <div className="flex items-center gap-2 border-b border-[var(--color-honeydew)]/30 pb-2 flex-wrap">
@@ -621,13 +645,11 @@ export default function Home({className}) {
                                                 #{index + 1}
                                             </span>
                                             <div className="flex flex-col flex-1 min-w-0 gap-1" title={modelName}>
-                                                {modelLabelMap[modelName]?.group && (
-                                                    <span className="text-[10px] uppercase tracking-widest font-semibold px-1.5 py-0.5 rounded bg-[var(--color-emerald)]/50 text-[var(--color-honeydew)]/80 self-start leading-tight">
-                                                        {modelLabelMap[modelName].group}
-                                                    </span>
-                                                )}
+                                                <span className="text-[10px] uppercase tracking-widest font-semibold px-1.5 py-0.5 rounded bg-[var(--color-emerald)]/50 text-[var(--color-honeydew)]/80 self-start leading-tight">
+                                                    {group}
+                                                </span>
                                                 <span className="text-base font-semibold truncate leading-snug">
-                                                    {modelLabelMap[modelName]?.label ?? modelName}
+                                                    {label}
                                                 </span>
                                             </div>
                                             {correctClass && isTop1 && (
