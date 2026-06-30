@@ -21,7 +21,12 @@ if [ "$HAS_GPU" = true ]; then
     
     # Verify if a working CUDA-enabled PyTorch is already present
     if ! python3 -c "import torch; assert torch.cuda.is_available()" &> /dev/null; then
-        echo "CUDA PyTorch is missing or invalid. Installing PyTorch with CUDA 12.4 support..."
+        echo "CUDA PyTorch is missing or invalid. Purging CPU versions..."
+        
+        # 💥 THE RECOVERY LINE: Force-remove the CPU versions from the virtual environment
+        pip uninstall -y torch torchvision
+        
+        echo "Installing PyTorch with CUDA 12.4 support..."
         pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu124
     else
         echo "CUDA PyTorch is already installed and verified operational!"
